@@ -177,7 +177,7 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
       <div class="seg" id="splitSeg"><button data-v="1">建物ごと</button><button data-v="0">まとめて</button></div>
     </div>
     <p class="note" style="margin:0" id="splitNote"></p>
-    <div class="warn" id="shortWarn" hidden>いまのルートは「最短距離」なので、優先順位はルートに反映されません。<button class="btn" id="toFlex">「近くを寄り道」に切り替える</button></div>
+    <div class="warn" id="shortWarn" hidden>いまのルートは「最短距離」で「後回し」がオフなので、1位以外の順位はルートに反映されません。<button class="btn" id="toFlex">「近くを寄り道」に切り替える</button></div>
     <div id="rank"></div>
   </section>
   <section class="panel addbox">
@@ -554,8 +554,7 @@ function renderRemoved(){
 let toastT=0;
 function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600)}
 function reordered(){
-  if(st.mode==='short'&&!st.topFirst) toast('並べ替えました。いまは「最短距離」なので、ルートは変わりません');
-  else toast(route.length?`巡回ルートを更新しました（最初は ${route[0].name}）`:'並べ替えました');
+  toast(route.length?`巡回ルートを更新しました（最初は ${route[0].name}）`:'並べ替えました');
 }
 // write a reordered group (one building, or everything) back into the global order
 function applyGroupOrder(ids){

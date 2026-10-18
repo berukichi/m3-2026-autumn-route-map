@@ -136,12 +136,21 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
 .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
 .sw:checked{background:var(--accent)}
 .sw:checked::after{transform:translateX(16px)}
-details.more{border-top:1px solid var(--line);padding-top:8px}
-details.more summary{cursor:pointer;font-size:.84rem;color:var(--muted);list-style:none;display:flex;justify-content:space-between;gap:10px}
+/* スタート・時間帯: styled as a tappable control (bordered row + 変更 affordance), not as plain text */
+details.more{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+details.more[open]{border-color:var(--accent)}
+details.more summary{cursor:pointer;list-style:none;display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;padding:10px 12px;border-radius:12px;font-size:.84rem}
+details.more summary:hover{background:var(--raise)}
 details.more summary::-webkit-details-marker{display:none}
-details.more summary::after{content:"＋"}
-details.more[open] summary::after{content:"－"}
-.moreBody{display:flex;flex-direction:column;gap:10px;padding-top:10px}
+.ms-icon{width:18px;height:18px;flex:none;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ms-item{display:inline-flex;align-items:baseline;gap:5px;min-width:0}
+.ms-k{font-size:.72rem;color:var(--muted);font-weight:700;letter-spacing:.04em}
+.ms-v{font-weight:700;color:var(--ink)}
+.ms-cta{margin-left:auto;display:inline-flex;align-items:center;gap:4px;color:var(--accent);font-weight:700;font-size:.82rem;border:1px solid var(--accent);border-radius:999px;padding:3px 10px}
+.ms-cta::after{content:"";width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .15s}
+details.more[open] .ms-cta::after{transform:translateY(1px) rotate(-135deg)}
+.moreBody{display:flex;flex-direction:column;gap:10px;padding:4px 12px 12px;border-top:1px solid var(--line);margin-top:0}
+.moreBody .field:first-child{padding-top:8px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field>span{font-size:.72rem;letter-spacing:.08em;color:var(--muted);font-weight:700}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -592,7 +601,12 @@ function segs(){
   document.getElementById('modeDesc').textContent=st.mode==='short'?(st.topFirst?`1位から回り始め、上位${st.topN}位までを先に最短で`:'1位から回り始め、あとは最短で')
     :st.mode==='flex'?'上位3件の中から近い順に（2つより後ろには下がりません）':'優先順位の通りに回ります';
   const lab=(id,v)=>document.querySelector(`#${id} [data-v="${v}"]`).textContent;
-  document.getElementById('moreSum').textContent=`スタート・時間帯：${lab('startSeg',st.start)}・${lab('timeSeg',st.time)}`;
+  const more=document.getElementById('more');
+  document.getElementById('moreSum').innerHTML=`<svg class="ms-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-5.4-6-10a6 6 0 0 1 12 0c0 4.6-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg>`
+    +`<span class="ms-item"><span class="ms-k">スタート</span><span class="ms-v">${lab('startSeg',st.start)}</span></span>`
+    +`<span class="ms-item"><span class="ms-k">時間帯</span><span class="ms-v">${lab('timeSeg',st.time)}</span></span>`
+    +`<span class="ms-cta">${more.open?'閉じる':'変更'}</span>`;
+  more.ontoggle=()=>{const c=more.querySelector('.ms-cta'); if(c) c.textContent=more.open?'閉じる':'変更'};
   [['startSeg','start'],['modeSeg','mode'],['timeSeg','time']].forEach(([id,k])=>{
     document.querySelectorAll('#'+id+' button').forEach(b=>{b.setAttribute('aria-pressed',st[k]===b.dataset.v);
       b.disabled=k==='start'&&!usable(b.dataset.v);

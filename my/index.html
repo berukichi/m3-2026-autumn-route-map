@@ -33,6 +33,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 header{padding-top:18px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .hd{min-width:0;display:flex;flex-direction:column;gap:2px}
 .theme{appearance:none;flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.hdbtns{display:flex;gap:8px;flex:none}
+a.theme{text-decoration:none}
+.helplink{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;color:var(--accent);font-weight:700;font-size:.88rem;text-decoration:none;border:1px solid var(--accent);border-radius:999px;padding:6px 14px}
+.helplink:hover{background:var(--raise)}
 .theme svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 h1{font-family:var(--f-display);font-weight:800;font-size:1.55rem;line-height:1.2;margin:0;text-wrap:balance;letter-spacing:.02em}
 h1 .lat{font-weight:600;font-size:1.12em;letter-spacing:.05em}
@@ -208,7 +212,10 @@ body.locked{overflow:hidden}
     <h1><span class="lat">M3</span><em>秋</em><span class="lat">2026</span> <span class="jp">巡回マップ</span></h1>
     <div class="sub">2026年10月25日(日) 東京流通センター ・ <span id="count">18</span>サークル</div>
     </div>
-    <button class="theme" id="themeBtn" aria-label="表示モードを切り替え"></button>
+    <div class="hdbtns">
+      <a class="theme" href="../help.html" aria-label="使い方（マニュアル）" title="使い方（マニュアル）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 12h5"/></svg></a>
+      <button class="theme" id="themeBtn" aria-label="表示モードを切り替え"></button>
+    </div>
   </header>
 
   <div class="mapdock" id="mapdock">
@@ -267,6 +274,7 @@ body.locked{overflow:hidden}
   </section>
   <button class="reset" id="reset">訪問済みをリセット</button>
   <p class="note">データはこの端末のブラウザ内（localStorage）だけに保存され、サーバーには送られません。ほかの人の端末とデータが混ざることはありません。共有は、送る側が作ったQRコード・URL・コードを受け取る側で読み込む方式で、その時点の内容を写すものです（自動では同期しません）。</p>
+  <a class="helplink" href="../help.html">使い方（マニュアル）を読む ›</a>
   <footer class="foot">
     <span>© 2026 berukichi</span>
     <span>配置データ: M3 Webカタログ（catalog.m3net.jp/2026f）の会場マップより。距離は机の座標から求めた目安です。非公式のファンメイドツールです。</span>

@@ -11,7 +11,7 @@
 <style>
 /* Layout: phone-first single column — sticky hall tabs, zoomable map, then the ordered route list */
 :root{
-  --bg:#f4f3f9; --surface:#ffffff; --ink:#1d1b33; --muted:#686583; --line:#d8d5e7; --desk:#e6e4f0; --desk-ink:#9a97b3;
+  --bg:#f4f3f9; --surface:#ffffff; --ink:#1d1b33; --muted:#686583; --line:#d8d5e7; --raise:#eceaf5; --desk:#e6e4f0; --desk-ink:#9a97b3;
   --accent:#c2346d; --p1:#c2346d; --p2:#3b58d4; --p3:#86849e; --ok:#2b8a57; --hall:#3a3757;
   /* Oxanium has Latin only, so Japanese in the title falls through to M PLUS Rounded 1c */
   --f-display:"Oxanium","M PLUS Rounded 1c","Zen Kaku Gothic New",system-ui,sans-serif;
@@ -19,10 +19,10 @@
   --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#13121d; --surface:#1d1b2c; --ink:#ecebf6; --muted:#a3a0bf; --line:#34314c; --desk:#2a2840; --desk-ink:#6f6c8c;
+  --bg:#13121d; --surface:#1d1b2c; --ink:#ecebf6; --muted:#a3a0bf; --line:#34314c; --raise:#26243a; --desk:#2a2840; --desk-ink:#6f6c8c;
   --accent:#ff6c9f; --p1:#ff6c9f; --p2:#7f96ff; --p3:#8d8aa8; --ok:#5cc98a; --hall:#b9b6d6; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#13121d; --surface:#1d1b2c; --ink:#ecebf6; --muted:#a3a0bf; --line:#34314c; --desk:#2a2840; --desk-ink:#6f6c8c;
+  --bg:#13121d; --surface:#1d1b2c; --ink:#ecebf6; --muted:#a3a0bf; --line:#34314c; --raise:#26243a; --desk:#2a2840; --desk-ink:#6f6c8c;
   --accent:#ff6c9f; --p1:#ff6c9f; --p2:#7f96ff; --p3:#8d8aa8; --ok:#5cc98a; --hall:#b9b6d6; color-scheme:dark}
 *{box-sizing:border-box}
 html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -121,8 +121,33 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
 .rank-h span{font:500 .75rem var(--f-mono);color:var(--muted)}
 .warn{font-size:.8rem;border:1px solid var(--accent);border-radius:10px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
 .topn{display:inline-flex;align-items:center;gap:4px;font-size:.82rem}
-#topN{width:4em;font:inherit;font-size:16px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);text-align:center}
-#topN:disabled{opacity:.5}
+/* route settings (案D): route tabs up front, start/time folded away */
+.routeTabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--raise);border-radius:12px;padding:4px;gap:4px}
+.routeTabs button{appearance:none;border:0;background:transparent;border-radius:9px;padding:9px 4px;font:inherit;font-size:.85rem;color:var(--muted);cursor:pointer}
+.routeTabs button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.desc{display:flex;align-items:center;justify-content:space-between;gap:6px 10px;font-size:.82rem;color:var(--muted);flex-wrap:wrap}
+.topctl{display:inline-flex;align-items:center;gap:6px;font-size:.8rem}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface)}
+.stepper button{appearance:none;border:0;background:transparent;width:30px;height:28px;font:700 .95rem var(--f-mono);color:var(--muted);cursor:pointer}
+.stepper button:disabled{opacity:.35;cursor:default}
+.stepper output{min-width:1.6em;text-align:center;font:700 .85rem var(--f-mono);color:var(--ink)}
+.topctl.off .stepper output{color:var(--muted)}
+.sw{appearance:none;width:36px;height:20px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;flex:none;margin:0;transition:background .15s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw:checked{background:var(--accent)}
+.sw:checked::after{transform:translateX(16px)}
+details.more{border-top:1px solid var(--line);padding-top:8px}
+details.more summary{cursor:pointer;font-size:.84rem;color:var(--muted);list-style:none;display:flex;justify-content:space-between;gap:10px}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary::after{content:"＋"}
+details.more[open] summary::after{content:"－"}
+.moreBody{display:flex;flex-direction:column;gap:10px;padding-top:10px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>span{font-size:.72rem;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 12px;font:inherit;font-size:.84rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip:disabled{opacity:.4;cursor:default}
 .open-rank{appearance:none;font:inherit;font-weight:700;font-size:.9rem;border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .open-rank::after{content:"›";font-size:1.2rem;line-height:1}
 .open-rank span{margin-left:auto;font:500 .75rem var(--f-mono);color:var(--muted)}
@@ -182,22 +207,19 @@ body.locked{overflow:hidden}
   </div>
 
   <section class="panel">
-    <div class="row"><span class="lbl">スタート</span>
-      <div class="seg" id="startSeg"><button data-v="e1s">第一 南入口</button><button data-v="e1n">第一 北入口</button><button data-v="e2">第二 1F入口</button></div>
-    </div>
-    <div class="row"><span class="lbl">時間帯</span>
-      <div class="seg" id="timeSeg"><button data-v="am">開場直後</button><button data-v="pm">午後</button></div>
-    </div>
-    <div class="row"><span class="lbl">ルート</span>
-      <div class="seg" id="modeSeg"><button data-v="short">最短距離</button><button data-v="flex">近くを寄り道</button><button data-v="strict">優先順位どおり</button></div>
-    </div>
-    <div class="row" id="topRow"><span class="lbl">後回し</span>
-      <label class="chk"><input type="checkbox" id="topFirst">優先順位の上位</label>
-      <span class="topn"><input type="number" id="topN" min="1" max="50" inputmode="numeric" aria-label="先に回る順位">位までを先に回る（<span id="topRest">6</span>位以下は後回し）</span>
+    <div class="routeTabs" id="modeSeg" role="group" aria-label="ルート"><button data-v="short">最短距離</button><button data-v="flex">近くを寄り道</button><button data-v="strict">順位どおり</button></div>
+    <div class="desc"><span id="modeDesc"></span>
+      <span class="topctl" id="topRow"><input type="checkbox" class="sw" id="topFirst" aria-label="上位を先に回る">上位 <span class="stepper"><button type="button" id="topMinus" aria-label="減らす">−</button><output id="topN">5</output><button type="button" id="topPlus" aria-label="増やす">＋</button></span> 位</span>
     </div>
     <button class="open-rank" id="openRank" aria-haspopup="dialog">優先順位を並べ替える<span id="openRankN"></span></button>
+    <details class="more" id="more"><summary id="moreSum">スタート・時間帯</summary>
+      <div class="moreBody">
+        <div class="field"><span>スタート</span><div class="chips" id="startSeg"><button class="chip" data-v="e1s">第一 南入口</button><button class="chip" data-v="e1n">第一 北入口</button><button class="chip" data-v="e2">第二 1F入口</button></div></div>
+        <div class="field"><span>時間帯</span><div class="chips" id="timeSeg"><button class="chip" data-v="am">開場直後</button><button class="chip" data-v="pm">午後</button></div></div>
+        <p class="note" style="margin:0">第一展示場と第二展示場1Fは入口と出口が別です。開場直後に第一展示場へ入れるのは南入口だけで、「午後」にすると北入口も使うルートになります。</p>
+      </div>
+    </details>
     <div class="summary" id="summary"></div>
-    <div class="note">「最短距離」は優先順位1位のブースから回り始め、そこから距離が最短になる順に回ります。初期設定では上位5位までを先に回り、6位以下はそのあとに回ります（「後回し」で変更できます）。「近くを寄り道」は上位3件の中から近いブースを先に回りますが、どのブースも本来の順位から2つより後ろには下がりません。「優先順位どおり」は順位の通りに回ります。第一展示場は入口と出口が別で、第二展示場へは北側の「出口」から出ます。開場直後に第一展示場へ入れるのは南入口だけで、「午後」にすると北入口も使うルートになります。サークル名をタップすると地図上の位置に移動します。</div>
   </section>
 
   <section>
@@ -526,12 +548,18 @@ function renderTabs(){
 }
 function segs(){
   if(!usable(st.start)) st.start='e1s';
-  document.getElementById('topRow').hidden=st.mode!=='short';
-  const tf=document.getElementById('topFirst'), tn=document.getElementById('topN');
-  tf.checked=st.topFirst; tn.value=st.topN; tn.disabled=!st.topFirst;
-  document.getElementById('topRest').textContent=st.topN+1;
+  const topRow=document.getElementById('topRow'), tf=document.getElementById('topFirst');
+  topRow.hidden=st.mode!=='short'; topRow.classList.toggle('off',!st.topFirst);
+  tf.checked=st.topFirst; document.getElementById('topN').textContent=st.topN;
+  document.getElementById('topMinus').disabled=!st.topFirst||st.topN<=1;
+  document.getElementById('topPlus').disabled=!st.topFirst||st.topN>=50;
   tf.onchange=()=>{st.topFirst=tf.checked;save();refresh()};
-  tn.onchange=()=>{const v=Math.round(+tn.value); st.topN=Math.min(50,Math.max(1,Number.isFinite(v)?v:5)); save(); refresh()};
+  document.getElementById('topMinus').onclick=()=>{st.topN=Math.max(1,st.topN-1);save();refresh()};
+  document.getElementById('topPlus').onclick=()=>{st.topN=Math.min(50,st.topN+1);save();refresh()};
+  document.getElementById('modeDesc').textContent=st.mode==='short'?(st.topFirst?`1位から回り始め、上位${st.topN}位までを先に最短で`:'1位から回り始め、あとは最短で')
+    :st.mode==='flex'?'上位3件の中から近い順に（2つより後ろには下がりません）':'優先順位の通りに回ります';
+  const lab=(id,v)=>document.querySelector(`#${id} [data-v="${v}"]`).textContent;
+  document.getElementById('moreSum').textContent=`スタート・時間帯：${lab('startSeg',st.start)}・${lab('timeSeg',st.time)}`;
   [['startSeg','start'],['modeSeg','mode'],['timeSeg','time']].forEach(([id,k])=>{
     document.querySelectorAll('#'+id+' button').forEach(b=>{b.setAttribute('aria-pressed',st[k]===b.dataset.v);
       b.disabled=k==='start'&&!usable(b.dataset.v);

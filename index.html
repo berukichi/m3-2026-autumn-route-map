@@ -107,6 +107,17 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
 .topn{display:inline-flex;align-items:center;gap:4px;font-size:.82rem}
 #topN{width:4em;font:inherit;font-size:16px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);text-align:center}
 #topN:disabled{opacity:.5}
+.open-rank{appearance:none;font:inherit;font-weight:700;font-size:.9rem;border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.open-rank::after{content:"›";font-size:1.2rem;line-height:1}
+.open-rank span{margin-left:auto;font:500 .75rem var(--f-mono);color:var(--muted)}
+.route-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.rank-link{font-size:.8rem;color:var(--accent);font-weight:700}
+.sheet{position:fixed;inset:0;z-index:10;background:rgba(10,8,25,.5);display:flex;align-items:flex-end;justify-content:center}
+.sheet-panel{background:var(--bg);width:100%;max-width:760px;max-height:calc(100% - 32px - env(safe-area-inset-top,0px));border-radius:16px 16px 0 0;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.3)}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.sheet-head h2{margin:0;font-size:1rem;letter-spacing:0;color:var(--ink)}
+.sheet-body{overflow:auto;overscroll-behavior:contain;padding:12px 16px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
+body.locked{overflow:hidden}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:.82rem;padding:9px 14px;border-radius:10px;max-width:calc(100% - 32px);z-index:20;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 .foot{display:flex;flex-direction:column;gap:2px;font-size:.72rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
 .foot span:first-child{font-family:var(--f-mono);color:var(--ink)}
@@ -163,22 +174,14 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
       <label class="chk"><input type="checkbox" id="topFirst">優先順位の上位</label>
       <span class="topn"><input type="number" id="topN" min="1" max="50" inputmode="numeric" aria-label="先に回る順位">位までを先に回る（<span id="topRest">6</span>位以下は後回し）</span>
     </div>
+    <button class="open-rank" id="openRank" aria-haspopup="dialog">優先順位を並べ替える<span id="openRankN"></span></button>
     <div class="summary" id="summary"></div>
     <div class="note">「最短距離」は優先順位1位のブースから回り始め、そこから距離が最短になる順に回ります。初期設定では上位5位までを先に回り、6位以下はそのあとに回ります（「後回し」で変更できます）。「近くを寄り道」は上位3件の中から近いブースを先に回りますが、どのブースも本来の順位から2つより後ろには下がりません。「優先順位どおり」は順位の通りに回ります。第一展示場は入口と出口が別で、第二展示場へは北側の「出口」から出ます。開場直後に第一展示場へ入れるのは南入口だけで、「午後」にすると北入口も使うルートになります。サークル名をタップすると地図上の位置に移動します。</div>
   </section>
 
   <section>
-    <h2>巡回ルート</h2>
+    <div class="route-h"><h2>巡回ルート</h2><a href="#rank" class="rank-link">優先順位を並べ替える</a></div>
     <ol class="route" id="route"></ol>
-  </section>
-  <section class="panel">
-    <h2>優先順位</h2>
-    <div class="row"><span class="lbl">並べ方</span>
-      <div class="seg" id="splitSeg"><button data-v="1">建物ごと</button><button data-v="0">まとめて</button></div>
-    </div>
-    <p class="note" style="margin:0" id="splitNote"></p>
-    <div class="warn" id="shortWarn" hidden>いまのルートは「最短距離」で「後回し」がオフなので、1位以外の順位はルートに反映されません。<button class="btn" id="toFlex">「近くを寄り道」に切り替える</button></div>
-    <div id="rank"></div>
   </section>
   <section class="panel addbox">
     <h2>ブースを追加</h2>
@@ -199,6 +202,19 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
     <span>© 2026 berukichi</span>
     <span>配置データ: M3 Webカタログ（catalog.m3net.jp/2026f）の会場マップより。距離は机の座標から求めた目安です。非公式のファンメイドツールです。</span>
   </footer>
+</div>
+<div class="sheet" id="rankSheet" hidden>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="rankTitle">
+    <div class="sheet-head"><h2 id="rankTitle">優先順位</h2><button class="btn" id="rankClose">閉じる</button></div>
+    <div class="sheet-body" id="sheetBody">
+      <div class="row"><span class="lbl">並べ方</span>
+        <div class="seg" id="splitSeg"><button data-v="1">建物ごと</button><button data-v="0">まとめて</button></div>
+      </div>
+      <p class="note" style="margin:0" id="splitNote"></p>
+      <div class="warn" id="shortWarn" hidden>いまのルートは「最短距離」で「後回し」がオフなので、1位以外の順位はルートに反映されません。<button class="btn" id="toFlex">「近くを寄り道」に切り替える</button></div>
+      <div id="rank"></div>
+    </div>
+  </div>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -564,6 +580,7 @@ function applyGroupOrder(ids){
 function renderRank(focusId){
   const box=document.getElementById('rank'); box.replaceChildren();
   document.getElementById('shortWarn').hidden=!(st.mode==='short'&&!st.topFirst);
+  document.getElementById('openRankN').textContent=STOPS.length+'件';
   document.querySelectorAll('#splitSeg button').forEach(b=>{b.setAttribute('aria-pressed',String(st.split)===(b.dataset.v==='1'?'true':'false'));
     b.onclick=()=>{st.split=b.dataset.v==='1';save();refresh()}});
   document.getElementById('splitNote').textContent=(st.split?'第一展示場と第二展示場（1F・2F）を別々に並べます。スタート地点の建物を回り終えてから、もう一方へ1回だけ移動します。第二展示場は1階と2階を行き来しないよう、1位のブースがある階を先に回り切ってからもう一方の階へ移ります（そのため順位どおりにならないことがあります）。':'すべてのブースを1つのリストで並べます。建物の行き来が増えることがあります。')+' ⠿ をドラッグして並べ替え、上ほど優先です（⠿ にフォーカスして ↑↓ キーでも動かせます）。';
@@ -590,10 +607,30 @@ function renderRank(focusId){
   });
   if(focusId){const h=box.querySelector(`li[data-id="${CSS.escape(focusId)}"] .handle`); if(h)h.focus()}
 }
+/* 優先順位 sheet: opened from the button or the #rank link, closed by 閉じる, the backdrop or Esc */
+const sheet=document.getElementById('rankSheet');
+let sheetOpener=null;
+function openRank(){
+  if(!sheet.hidden) return;
+  sheetOpener=document.activeElement; sheet.hidden=false; document.body.classList.add('locked');
+  document.getElementById('sheetBody').scrollTop=0; document.getElementById('rankClose').focus();
+}
+function closeRank(){
+  if(sheet.hidden) return;
+  sheet.hidden=true; document.body.classList.remove('locked');
+  if(location.hash==='#rank') history.replaceState(null,'',location.pathname+location.search);
+  if(sheetOpener&&sheetOpener.focus) sheetOpener.focus();
+}
+document.getElementById('openRank').onclick=openRank;
+document.getElementById('rankClose').onclick=closeRank;
+sheet.addEventListener('click',e=>{if(e.target===sheet)closeRank()});
+addEventListener('keydown',e=>{if(e.key==='Escape')closeRank()});
+document.querySelector('.rank-link').addEventListener('click',e=>{e.preventDefault();openRank()});
+addEventListener('hashchange',()=>{if(location.hash==='#rank')openRank()});
 document.getElementById('toFlex').onclick=()=>{st.mode='flex';save();refresh();toast('ルートを「近くを寄り道」に切り替えました')};
 function startDrag(e,li,h){
   if(e.button>0) return; e.preventDefault();
-  const ol=li.parentNode; let startY=e.clientY+scrollY;
+  const ol=li.parentNode, sc=document.getElementById('sheetBody'); let startY=e.clientY+sc.scrollTop;
   try{h.setPointerCapture(e.pointerId)}catch(_){}
   li.classList.add('dragging');
   // the row follows the pointer; it swaps with a neighbour once the pointer passes that neighbour's middle
@@ -606,8 +643,9 @@ function startDrag(e,li,h){
       else break;
       startY+=li.offsetTop-top0;
     }
-    li.style.transform=`translateY(${ev.clientY+scrollY-startY}px)`;
-    if(ev.clientY<70) scrollBy(0,-12); else if(ev.clientY>innerHeight-70) scrollBy(0,12);
+    li.style.transform=`translateY(${ev.clientY+sc.scrollTop-startY}px)`;
+    const box=sc.getBoundingClientRect();
+    if(ev.clientY<box.top+60) sc.scrollBy(0,-12); else if(ev.clientY>box.bottom-60) sc.scrollBy(0,12);
   };
   const end=()=>{
     removeEventListener('pointermove',move); removeEventListener('pointerup',end); removeEventListener('pointercancel',end);
@@ -622,6 +660,7 @@ function refresh(focusId){rebuildStops();syncOrder();segs();computeD();compute()
 document.getElementById('reset').onclick=()=>{st.done={};save();refresh()};
 
 buildMaps(); refresh(); showHall(st.hall);
+if(location.hash==='#rank') openRank();
 addEventListener('resize',()=>applyZoom());
 </script>
 </body>

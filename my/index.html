@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<meta name="author" content="berukichi">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>M3秋2026 巡回マップ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -88,6 +89,19 @@ ol.results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column
 .btn{appearance:none;border:1px solid var(--accent);background:transparent;color:var(--accent);font:inherit;font-size:.78rem;font-weight:700;border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap}
 .btn:disabled{border-color:var(--line);color:var(--muted);cursor:default}
 .rm{appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:.74rem;border-radius:8px;padding:4px 8px;cursor:pointer;margin-left:auto}
+ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rk{display:grid;grid-template-columns:40px 30px 1fr auto;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 8px 6px 0;position:relative}
+.rk.done{opacity:.55}
+.rk.dragging{z-index:3;box-shadow:0 8px 20px rgba(0,0,0,.25);border-color:var(--accent)}
+.handle{appearance:none;border:0;background:transparent;color:var(--muted);font-size:1.25rem;line-height:1;height:40px;cursor:grab;touch-action:none;border-radius:8px}
+.rk.dragging .handle{cursor:grabbing;color:var(--accent)}
+.rkn{font:700 .85rem var(--f-mono);color:var(--pc);text-align:right;font-variant-numeric:tabular-nums}
+.rkb{min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.rkb b{font-size:.92rem;overflow-wrap:anywhere}
+.rkb span{font-size:.74rem;color:var(--muted)}
+.badge{font-size:.72rem;font-weight:700;color:var(--pc);border:1px solid currentColor;border-radius:999px;padding:0 7px}
+.foot{display:flex;flex-direction:column;gap:2px;font-size:.72rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+.foot span:first-child{font-family:var(--f-mono);color:var(--ink)}
 .reset{appearance:none;background:none;border:0;color:var(--muted);font:inherit;font-size:.78rem;text-decoration:underline;cursor:pointer;padding:0}
 /* map */
 .m-frame{fill:none;stroke:var(--hall);stroke-width:4}
@@ -97,6 +111,7 @@ ol.results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column
 .m-portal{fill:var(--ok)}
 .m-pt{fill:var(--ok);font:700 17px var(--f-body)}
 .m-route{fill:none;stroke:var(--accent);stroke-width:4;stroke-dasharray:10 7;stroke-linecap:round;opacity:.85}
+.m-portal.m-exit,.m-pt.m-exit{fill:var(--muted)}
 .m-tgt{stroke:var(--surface);stroke-width:2.5}
 .m-tn{fill:#fff;font:700 15px var(--f-mono)}
 .m-hl{fill:none;stroke:var(--accent);stroke-width:4}
@@ -118,27 +133,36 @@ ol.results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column
     <div class="mapscroll" id="mapscroll"></div>
     <div class="zoom"><button id="zout" aria-label="縮小">−</button><button id="zin" aria-label="拡大">＋</button></div>
     <div class="maphint">
-      <span class="lg"><span class="dot" style="background:var(--p1)"></span>最優先</span>
-      <span class="lg"><span class="dot" style="background:var(--p2)"></span>優先</span>
-      <span class="lg"><span class="dot" style="background:var(--p3)"></span>余裕があれば</span>
+      <span class="lg"><span class="dot" style="background:var(--p1)"></span>優先順位 上位</span>
+      <span class="lg"><span class="dot" style="background:var(--p2)"></span>中位</span>
+      <span class="lg"><span class="dot" style="background:var(--p3)"></span>下位</span>
       <span class="lg"><span class="dot" style="background:var(--ok)"></span>入口・エスカレーター／訪問済み</span>
+      <span class="lg"><span class="dot" style="background:var(--muted)"></span>出口</span>
     </div>
   </div>
 
   <section class="panel">
     <div class="row"><span class="lbl">スタート</span>
-      <div class="seg" id="startSeg"><button data-v="e1">第一展示場 入口</button><button data-v="e2">第二展示場 1F入口</button></div>
+      <div class="seg" id="startSeg"><button data-v="e1s">第一 南入口</button><button data-v="e1n">第一 北入口</button><button data-v="e2">第二 1F入口</button></div>
+    </div>
+    <div class="row"><span class="lbl">時間帯</span>
+      <div class="seg" id="timeSeg"><button data-v="am">開場直後</button><button data-v="pm">午後</button></div>
     </div>
     <div class="row"><span class="lbl">ルート</span>
-      <div class="seg" id="modeSeg"><button data-v="prio">優先度順</button><button data-v="short">最短距離</button></div>
+      <div class="seg" id="modeSeg"><button data-v="strict">優先順位どおり</button><button data-v="flex">近くを寄り道</button><button data-v="short">最短距離</button></div>
     </div>
     <div class="summary" id="summary"></div>
-    <div class="note">優先度順は「最優先→優先→余裕があれば」の順に、各グループ内で歩く距離が短くなるよう並べます。最短距離は優先度を無視して全体を最短化します。建物の移動はなるべく少なくなるよう計算します。サークル名をタップすると地図上の位置に移動します。</div>
+    <div class="note">「優先順位どおり」は順位の通りに回ります。「近くを寄り道」は上位3件の中から近いブースを先に回りますが、どのブースも本来の順位から2つより後ろには下がりません。「最短距離」は順位を無視して全体の距離を最短にします。第一展示場は入口と出口が別で、第二展示場へは北側の「出口」から出ます。開場直後に第一展示場へ入れるのは南入口だけで、「午後」にすると北入口も使うルートになります。サークル名をタップすると地図上の位置に移動します。</div>
   </section>
 
   <section>
-    <h2>巡回順</h2>
+    <h2>巡回ルート</h2>
     <ol class="route" id="route"></ol>
+  </section>
+  <section class="panel">
+    <h2>優先順位</h2>
+    <p class="note" style="margin:0">⠿ をドラッグして並べ替えます。上ほど優先です。⠿ にフォーカスして ↑↓ キーでも動かせます。</p>
+    <ol class="rank" id="rank"></ol>
   </section>
   <section class="panel addbox">
     <h2>ブースを追加</h2>
@@ -153,8 +177,12 @@ ol.results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column
     <h2>訪問済み</h2>
     <ol class="route" id="done"></ol>
   </section>
-  <button class="reset" id="reset">優先度と訪問済みをリセット</button>
-  <p class="note">配置データは M3 Webカタログ（catalog.m3net.jp/2026f）の会場マップから作成。距離は机の座標から求めた目安です。</p>
+  <button class="reset" id="reset">訪問済みをリセット</button>
+  <p class="note">データはこの端末のブラウザ内（localStorage）だけに保存され、サーバーには送られません。ほかの人の端末とデータが混ざることはありません。</p>
+  <footer class="foot">
+    <span>© 2026 berukichi</span>
+    <span>配置データ: M3 Webカタログ（catalog.m3net.jp/2026f）の会場マップより。距離は机の座標から求めた目安です。非公式のファンメイドツールです。</span>
+  </footer>
 </div>
 
 <script>
@@ -193,15 +221,21 @@ const HALLS={
 };
 const HALL_ORDER=['H1','H2F1','H2F2'];
 const hallOf=b=>'あいうえおか'.includes(b)?'H2F1':'キクケコサシ'.includes(b)?'H2F2':'H1';
+// 第一展示場は入口と出口が別。開場直後は南側（T列の08と09の間）の入口からのみ入場でき、
+// 午後になると北側の入口も使える。第一展示場から出るのは北側の出口だけ。
 const PORTALS={
- // 開場直後は第一展示場の南側（T列の08と09の間）の入口からのみ入場できる
- e1:{hall:'H1',x:1551,y:1588,label:'入口'},
- e2:{hall:'H2F1',x:1100,y:437,label:'入口'},
- s1:{hall:'H2F1',x:1062,y:568,label:'エスカレーター'},
- s2:{hall:'H2F2',x:2168,y:440,label:'エスカレーター'},
+ e1s:{hall:'H1',x:1551,y:1588,label:'入口（南）',in:1},
+ e1n:{hall:'H1',x:1589,y:1030,label:'入口（午後〜）',in:1,pm:1},
+ x1:{hall:'H1',x:1389,y:1030,label:'出口',out:1},
+ e2:{hall:'H2F1',x:1100,y:437,label:'入口',in:1,out:1},
+ s1:{hall:'H2F1',x:1062,y:568,label:'エスカレーター',in:1,out:1},
+ s2:{hall:'H2F2',x:2168,y:440,label:'エスカレーター',in:1,out:1},
 };
-// building-to-building walk weighs much more than walking an aisle
-const LINKS=[['e1','e2',2500],['s1','s2',300]];
+// one-way links between portals; no cost = walking inside the hall.
+// building-to-building walks weigh much more than walking an aisle
+const LINKS=[['x1','e2',2500],['e2','e1s',2800],['e2','e1n',2500,'pm'],['s1','s2',300],['s2','s1',300],['e2','s1'],['s1','e2']];
+const usable=k=>!PORTALS[k].pm||st.time==='pm';
+const SP=()=>PORTALS[usable(st.start)?st.start:'e1s'];
 const UNIT_M=0.064; // ~1.8 m per space number
 
 const deskMap={}; DATA.desks.forEach(d=>deskMap[d.id]=d);
@@ -214,16 +248,18 @@ function rebuildStops(){
   STOPS=[...BASE,...st.custom].filter(s=>!st.removed[s.id]).map(place).filter(Boolean);
 }
 
-/* portal graph (Floyd–Warshall on 4 nodes) */
+/* directed portal graph (Floyd–Warshall), rebuilt when the time of day changes */
 const man=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
 const PK=Object.keys(PORTALS);
 const D={},NX={};
-PK.forEach(a=>{D[a]={};NX[a]={};PK.forEach(b=>{D[a][b]=a===b?0:(PORTALS[a].hall===PORTALS[b].hall?man(PORTALS[a],PORTALS[b]):Infinity);NX[a][b]=b})});
-LINKS.forEach(([a,b,c])=>{D[a][b]=D[b][a]=c});
-PK.forEach(k=>PK.forEach(i=>PK.forEach(j=>{if(D[i][k]+D[k][j]<D[i][j]){D[i][j]=D[i][k]+D[k][j];NX[i][j]=NX[i][k]}})));
-function best(p,q){
+function computeD(){
+  PK.forEach(a=>{D[a]={};NX[a]={};PK.forEach(b=>{D[a][b]=a===b?0:Infinity;NX[a][b]=b})});
+  LINKS.forEach(([a,b,c,pm])=>{if(pm&&st.time!=='pm')return; D[a][b]=c??man(PORTALS[a],PORTALS[b])});
+  PK.forEach(k=>PK.forEach(i=>PK.forEach(j=>{if(D[i][k]+D[k][j]<D[i][j]){D[i][j]=D[i][k]+D[k][j];NX[i][j]=NX[i][k]}})));
+}
+function best(p,q){ // leave p's hall through an exit, enter q's hall through an entrance
   let r={c:Infinity};
-  PK.filter(a=>PORTALS[a].hall===p.hall).forEach(a=>PK.filter(b=>PORTALS[b].hall===q.hall).forEach(b=>{
+  PK.filter(a=>PORTALS[a].hall===p.hall&&PORTALS[a].out&&usable(a)).forEach(a=>PK.filter(b=>PORTALS[b].hall===q.hall&&PORTALS[b].in&&usable(b)).forEach(b=>{
     const c=man(p,PORTALS[a])+D[a][b]+man(PORTALS[b],q); if(c<r.c) r={c,a,b};
   }));
   return r;
@@ -252,19 +288,52 @@ function orderFrom(start,items){
 
 /* state */
 const KEY='m3-2026f-route-my';
-let st={prio:{},done:{},start:'e1',mode:'prio',hall:'H1',zoom:{},custom:[],removed:{}};
-try{const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s) st=Object.assign(st,s)}catch(e){}
+const DEFAULTS=()=>({order:[],done:{},start:'e1s',time:'am',mode:'flex',hall:'H1',zoom:{},custom:[],removed:{}});
+const isObj=v=>v&&typeof v==='object'&&!Array.isArray(v);
+// Read and sanity-check the saved state; anything malformed falls back to defaults
+function load(){
+  const st=DEFAULTS(); let s=null;
+  try{s=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
+  if(!isObj(s)) return st;
+  if(Array.isArray(s.order)) st.order=s.order.filter(x=>typeof x==='string');
+  ['done','removed','zoom'].forEach(k=>{if(isObj(s[k])) st[k]=s[k]});
+  if(Array.isArray(s.custom)) st.custom=s.custom.filter(c=>isObj(c)&&typeof c.id==='string'&&typeof c.area==='string'&&typeof c.num==='string').map(c=>({...c,name:String(c.name||c.id),circle:String(c.circle||c.name||''),tw:Array.isArray(c.tw)?c.tw.filter(u=>/^https:\/\//.test(u)):[],custom:true}));
+  if(s.start in PORTALS&&PORTALS[s.start].in) st.start=s.start;
+  if(s.time==='pm') st.time='pm';
+  if(['strict','flex','short'].includes(s.mode)) st.mode=s.mode;
+  if(s.hall in HALLS) st.hall=s.hall;
+  // earlier version stored 3 priority tiers; turn them into a ranking once
+  if(!st.order.length&&isObj(s.prio)) st.order=[...BASE,...st.custom].map((b,i)=>[b.id,(s.prio[b.id]||2)*100+i]).sort((a,b)=>a[1]-b[1]).map(a=>a[0]);
+  return st;
+}
+let st=load();
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
-const pr=s=>st.prio[s.id]||2;
+// another tab of this page saved newer data: adopt it instead of overwriting it later
+addEventListener('storage',e=>{if(e.key===KEY){st=load();refresh();showHall(st.hall)}});
+
+/* ranking */
+function syncOrder(){
+  const ids=new Set(STOPS.map(s=>s.id));
+  st.order=st.order.filter(id=>ids.has(id));
+  STOPS.forEach(s=>{if(!st.order.includes(s.id))st.order.push(s.id)});
+}
+const rankOf=s=>st.order.indexOf(s.id);
+function tier(s){const n=STOPS.length,r=rankOf(s); return r<Math.ceil(n/3)?1:r<Math.ceil(n*2/3)?2:3}
 const PCOL={1:'var(--p1)',2:'var(--p2)',3:'var(--p3)'};
-const PNAME={1:'最優先',2:'優先',3:'余裕があれば'};
+const SLACK=2; // 近くを寄り道: a booth may slip at most this many places behind its rank
 
 let route=[];
 function compute(){
-  const todo=STOPS.filter(s=>!st.done[s.id]);
-  let cur=PORTALS[st.start]; route=[];
-  const groups=st.mode==='prio'?[1,2,3].map(p=>todo.filter(s=>pr(s)===p)):[todo];
-  groups.forEach(g=>{if(!g.length)return; const o=orderFrom(cur,g); route.push(...o); cur=o[o.length-1];});
+  const todo=STOPS.filter(s=>!st.done[s.id]).sort((a,b)=>rankOf(a)-rankOf(b));
+  const start=SP();
+  if(st.mode==='short'){route=orderFrom(start,todo);return}
+  if(st.mode==='strict'){route=todo;return}
+  route=[]; let cur=start; const rest=todo.map((s,r)=>({s,r}));
+  for(let t=0;rest.length;t++){
+    let pick=rest.find(o=>o.r+SLACK<=t);
+    if(!pick) rest.filter(o=>o.r<=t+SLACK).forEach(o=>{if(!pick||dist(cur,o.s)<dist(cur,pick.s))pick=o});
+    rest.splice(rest.indexOf(pick),1); route.push(pick.s); cur=pick.s;
+  }
 }
 
 /* map */
@@ -284,8 +353,10 @@ function buildMaps(){
     s.appendChild(g);
     DATA.blockLabels.forEach(l=>{if(hallOf(l.text)!==h)return; s.appendChild(el('text',{class:'m-bl',x:l.x,y:l.y,'text-anchor':'middle','dominant-baseline':'middle'},l.text))});
     Object.values(PORTALS).forEach(p=>{if(p.hall!==h)return;
-      s.appendChild(el('rect',{class:'m-portal',x:p.x-9,y:p.y-9,width:18,height:18,rx:4}));
-      s.appendChild(el('text',{class:'m-pt',x:p.x-14,y:p.y-14,'text-anchor':'end'},p.label));
+      const g=el('g',p.pm?{'data-pm':1}:{});
+      g.appendChild(el('rect',{class:'m-portal'+(p.out&&!p.in?' m-exit':''),x:p.x-9,y:p.y-9,width:18,height:18,rx:4}));
+      g.appendChild(el('text',{class:'m-pt'+(p.out&&!p.in?' m-exit':''),x:p.x+(p.out&&!p.in?-14:14),y:p.y+(p.y>1500?-14:28),'text-anchor':p.out&&!p.in?'end':'start'},p.label));
+      s.appendChild(g);
     });
     s.appendChild(el('g',{class:'layer'}));
     svgs[h]=s;
@@ -294,7 +365,8 @@ function buildMaps(){
 function drawRoute(){
   HALL_ORDER.forEach(h=>{const L=svgs[h].querySelector('.layer'); L.replaceChildren();});
   // start marker
-  const sp=PORTALS[st.start]; const SL=svgs[sp.hall].querySelector('.layer');
+  HALL_ORDER.forEach(h=>svgs[h].querySelectorAll('[data-pm]').forEach(e=>e.style.opacity=st.time==='pm'?1:.3));
+  const sp=SP(); const SL=svgs[sp.hall].querySelector('.layer');
   SL.appendChild(el('circle',{class:'m-start',cx:sp.x,cy:sp.y,r:13}));
   SL.appendChild(el('text',{class:'m-tn',x:sp.x,y:sp.y+5,'text-anchor':'middle'},'S'));
   // lines
@@ -305,11 +377,11 @@ function drawRoute(){
   STOPS.forEach(s=>{
     const L=svgs[s.hall].querySelector('.layer'); const i=route.indexOf(s); const done=!!st.done[s.id];
     const d=s.desk;
-    L.appendChild(el('rect',{class:'m-hl',x:d.x-2,y:d.y-2,width:d.width+4,height:d.height+4,rx:3,style:`stroke:${done?'var(--ok)':PCOL[pr(s)]}`}));
+    L.appendChild(el('rect',{class:'m-hl',x:d.x-2,y:d.y-2,width:d.width+4,height:d.height+4,rx:3,style:`stroke:${done?'var(--ok)':PCOL[tier(s)]}`}));
     const g=el('g',{style:'cursor:pointer'}); g.addEventListener('click',()=>focusStop(s));
-    g.appendChild(el('circle',{class:'m-tgt',cx:s.x,cy:s.y,r:15,style:`fill:${done?'var(--ok)':PCOL[pr(s)]}`}));
+    g.appendChild(el('circle',{class:'m-tgt',cx:s.x,cy:s.y,r:15,style:`fill:${done?'var(--ok)':PCOL[tier(s)]}`}));
     g.appendChild(el('text',{class:'m-tn',x:s.x,y:s.y+5,'text-anchor':'middle'},done?'✓':String(i+1)));
-    g.appendChild(el('title',{},`${s.name} ${s.area}-${s.num}`));
+    g.appendChild(el('title',{},`${s.name} ${s.area}-${s.num}（優先${rankOf(s)+1}位）`));
     L.appendChild(g);
   });
 }
@@ -353,33 +425,32 @@ function renderTabs(){
   });
 }
 function segs(){
-  [['startSeg','start'],['modeSeg','mode']].forEach(([id,k])=>{
+  if(!usable(st.start)) st.start='e1s';
+  [['startSeg','start'],['modeSeg','mode'],['timeSeg','time']].forEach(([id,k])=>{
     document.querySelectorAll('#'+id+' button').forEach(b=>{b.setAttribute('aria-pressed',st[k]===b.dataset.v);
+      b.disabled=k==='start'&&!usable(b.dataset.v);
       b.onclick=()=>{st[k]=b.dataset.v;save();refresh()}});
   });
 }
 const hallName=h=>HALLS[h].name+' '+HALLS[h].floor;
 function stopItem(s,i){
   const li=document.createElement('li'); li.className='stop'+(st.done[s.id]?' done':'');
-  li.style.setProperty('--pc',PCOL[pr(s)]);
+  li.style.setProperty('--pc',PCOL[tier(s)]);
   const tw=s.tw.map((u,k)=>`<a href="${esc(u)}" target="_blank" rel="noopener">${s.custom?'X':'告知ツイート'}${s.tw.length>1?k+1:''}</a>`).join('');
   li.innerHTML=`<div class="num">${st.done[s.id]?'✓':i+1}</div>
   <div class="body">
     <div class="top"><span class="name" tabindex="0" role="button">${esc(s.name)}</span><span class="booth">${esc(s.area+'-'+s.num)}</span></div>
     <div class="meta"><span>${hallName(s.hall)}</span><span>サークル「${esc(s.circle)}」</span>${tw}</div>
-    <div class="ctl"><span class="pr">${[1,2,3].map(p=>`<button data-p="${p}" aria-pressed="${pr(s)===p}">${PNAME[p]}</button>`).join('')}</span>
-    <label class="chk"><input type="checkbox" id="done-${s.id}" ${st.done[s.id]?'checked':''}>訪問済み</label>
-    <button class="rm">リストから外す</button></div>
+    <div class="ctl"><span class="badge">優先 ${rankOf(s)+1}位</span>
+    <label class="chk"><input type="checkbox" id="done-${esc(s.id)}" ${st.done[s.id]?'checked':''}>訪問済み</label></div>
   </div>`;
-  li.querySelector('.rm').onclick=()=>removeStop(s);
   const nm=li.querySelector('.name'); nm.onclick=()=>focusStop(s); nm.onkeydown=e=>{if(e.key==='Enter')focusStop(s)};
-  li.querySelectorAll('.pr button').forEach(b=>b.onclick=()=>{st.prio[s.id]=+b.dataset.p;save();refresh()});
   li.querySelector('input').onchange=e=>{if(e.target.checked)st.done[s.id]=1;else delete st.done[s.id];save();refresh()};
   return li;
 }
 function renderList(){
   const ol=document.getElementById('route'); ol.replaceChildren();
-  let prev=PORTALS[st.start], total=0, moves=0;
+  let prev=SP(), total=0, moves=0;
   route.forEach((s,i)=>{
     total+=dist(prev,s);
     if(prev.hall!==s.hall){moves++; const m=document.createElement('li'); m.className='move';
@@ -398,7 +469,7 @@ const boothId=(a,n)=>'c:'+a+'-'+n;
 const inList=(a,n)=>STOPS.some(s=>s.area===a&&s.num===n);
 function removeStop(s){
   if(s.custom) st.custom=st.custom.filter(c=>c.id!==s.id); else st.removed[s.id]=1;
-  delete st.prio[s.id]; delete st.done[s.id]; save(); refresh();
+  st.order=st.order.filter(id=>id!==s.id); delete st.done[s.id]; save(); refresh();
 }
 function addCircle(c){
   const [name,,area,num,tw]=c;
@@ -441,8 +512,50 @@ function renderRemoved(){
     li.querySelector('button').onclick=()=>{delete st.removed[b.id];save();refresh();search()}; ol.appendChild(li)});
   document.getElementById('removedSec').hidden=!r.length;
 }
-function refresh(){rebuildStops();compute();segs();drawRoute();renderList();renderTabs();renderRemoved();document.getElementById('count').textContent=STOPS.length}
-document.getElementById('reset').onclick=()=>{st.prio={};st.done={};save();refresh()};
+/* ranking list with drag (pointer) and keyboard reordering */
+function renderRank(focusId){
+  const ol=document.getElementById('rank'); ol.replaceChildren();
+  st.order.map(id=>STOPS.find(s=>s.id===id)).forEach((s,r)=>{
+    const li=document.createElement('li'); li.className='rk'+(st.done[s.id]?' done':''); li.dataset.id=s.id;
+    li.style.setProperty('--pc',PCOL[tier(s)]);
+    li.innerHTML=`<button class="handle" aria-label="${esc(s.name)}を並べ替え（↑↓キー）">⠿</button><span class="rkn">${r+1}</span>
+      <div class="rkb"><b>${esc(s.name)}</b><span>${esc(s.area+'-'+s.num)} ・ ${hallName(s.hall)}${st.done[s.id]?' ・ 訪問済み':''}</span></div>
+      <button class="rm">外す</button>`;
+    li.querySelector('.rm').onclick=()=>removeStop(s);
+    const h=li.querySelector('.handle');
+    h.onkeydown=e=>{const d=e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0; if(!d)return; e.preventDefault();
+      const i=st.order.indexOf(s.id),j=i+d; if(j<0||j>=st.order.length)return;
+      [st.order[i],st.order[j]]=[st.order[j],st.order[i]]; save(); refresh(s.id);};
+    h.addEventListener('pointerdown',e=>startDrag(e,li,h));
+    ol.appendChild(li);
+  });
+  if(focusId){const h=ol.querySelector(`li[data-id="${CSS.escape(focusId)}"] .handle`); if(h)h.focus()}
+}
+function startDrag(e,li,h){
+  if(e.button>0) return; e.preventDefault();
+  const ol=li.parentNode; let startY=e.clientY, raf=0, lastY=e.clientY;
+  h.setPointerCapture(e.pointerId); li.classList.add('dragging');
+  const place=()=>{li.style.transform=`translateY(${lastY-startY}px)`};
+  const move=ev=>{
+    lastY=ev.clientY;
+    const r=li.getBoundingClientRect(), mid=r.top+r.height/2;
+    const prev=li.previousElementSibling, next=li.nextElementSibling;
+    const swap=(sib,after)=>{const top0=li.offsetTop; after?sib.after(li):sib.before(li); startY+=li.offsetTop-top0};
+    if(next&&mid>next.getBoundingClientRect().top+next.offsetHeight/2) swap(next,true);
+    else if(prev&&mid<prev.getBoundingClientRect().top+prev.offsetHeight/2) swap(prev,false);
+    if(ev.clientY<70) scrollBy(0,-12); else if(ev.clientY>innerHeight-70) scrollBy(0,12);
+    cancelAnimationFrame(raf); raf=requestAnimationFrame(place);
+  };
+  const end=()=>{
+    h.removeEventListener('pointermove',move); h.removeEventListener('pointerup',end); h.removeEventListener('pointercancel',end);
+    cancelAnimationFrame(raf); li.classList.remove('dragging'); li.style.transform='';
+    const ids=[...ol.children].map(x=>x.dataset.id);
+    if(ids.join()!==st.order.join()){st.order=ids; save(); refresh()}
+  };
+  h.addEventListener('pointermove',move); h.addEventListener('pointerup',end); h.addEventListener('pointercancel',end);
+}
+function refresh(focusId){rebuildStops();syncOrder();segs();computeD();compute();drawRoute();renderList();renderRank(focusId);renderTabs();renderRemoved();document.getElementById('count').textContent=STOPS.length}
+document.getElementById('reset').onclick=()=>{st.done={};save();refresh()};
 
 buildMaps(); refresh(); showHall(st.hall);
 addEventListener('resize',()=>applyZoom());

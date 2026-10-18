@@ -104,6 +104,9 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
 .rank-h{font-size:.85rem;font-weight:700;margin:0;display:flex;justify-content:space-between;align-items:baseline}
 .rank-h span{font:500 .75rem var(--f-mono);color:var(--muted)}
 .warn{font-size:.8rem;border:1px solid var(--accent);border-radius:10px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.topn{display:inline-flex;align-items:center;gap:4px;font-size:.82rem}
+#topN{width:4em;font:inherit;font-size:16px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);text-align:center}
+#topN:disabled{opacity:.5}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:.82rem;padding:9px 14px;border-radius:10px;max-width:calc(100% - 32px);z-index:20;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 .foot{display:flex;flex-direction:column;gap:2px;font-size:.72rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
 .foot span:first-child{font-family:var(--f-mono);color:var(--ink)}
@@ -156,8 +159,12 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
     <div class="row"><span class="lbl">ルート</span>
       <div class="seg" id="modeSeg"><button data-v="strict">優先順位どおり</button><button data-v="flex">近くを寄り道</button><button data-v="short">最短距離</button></div>
     </div>
+    <div class="row" id="topRow"><span class="lbl">後回し</span>
+      <label class="chk"><input type="checkbox" id="topFirst">優先順位の上位</label>
+      <span class="topn"><input type="number" id="topN" min="1" max="50" inputmode="numeric" aria-label="先に回る順位">位までを先に回る（<span id="topRest">6</span>位以下は後回し）</span>
+    </div>
     <div class="summary" id="summary"></div>
-    <div class="note">「優先順位どおり」は順位の通りに回ります。「近くを寄り道」は上位3件の中から近いブースを先に回りますが、どのブースも本来の順位から2つより後ろには下がりません。「最短距離」は順位を無視して全体の距離を最短にします。第一展示場は入口と出口が別で、第二展示場へは北側の「出口」から出ます。開場直後に第一展示場へ入れるのは南入口だけで、「午後」にすると北入口も使うルートになります。サークル名をタップすると地図上の位置に移動します。</div>
+    <div class="note">「優先順位どおり」は順位の通りに回ります。「近くを寄り道」は上位3件の中から近いブースを先に回りますが、どのブースも本来の順位から2つより後ろには下がりません。「最短距離」は距離が最短になる順に回ります。初期設定では優先順位の上位5位までを先に回り、6位以下はそのあとに回ります（「後回し」で変更できます）。第一展示場は入口と出口が別で、第二展示場へは北側の「出口」から出ます。開場直後に第一展示場へ入れるのは南入口だけで、「午後」にすると北入口も使うルートになります。サークル名をタップすると地図上の位置に移動します。</div>
   </section>
 
   <section>
@@ -298,7 +305,7 @@ function orderFrom(start,items){
 
 /* state */
 const KEY='m3-2026f-route-my';
-const DEFAULTS=()=>({order:[],split:true,done:{},start:'e1s',time:'am',mode:'flex',hall:'H1',zoom:{},custom:[],removed:{}});
+const DEFAULTS=()=>({order:[],split:true,topFirst:true,topN:5,done:{},start:'e1s',time:'am',mode:'flex',hall:'H1',zoom:{},custom:[],removed:{}});
 const isObj=v=>v&&typeof v==='object'&&!Array.isArray(v);
 // Read and sanity-check the saved state; anything malformed falls back to defaults
 function load(){
@@ -312,6 +319,8 @@ function load(){
   if(s.time==='pm') st.time='pm';
   if(['strict','flex','short'].includes(s.mode)) st.mode=s.mode;
   if(typeof s.split==='boolean') st.split=s.split;
+  if(typeof s.topFirst==='boolean') st.topFirst=s.topFirst;
+  if(Number.isInteger(s.topN)&&s.topN>=1&&s.topN<=50) st.topN=s.topN;
   if(s.hall in HALLS) st.hall=s.hall;
   // earlier version stored 3 priority tiers; turn them into a ranking once
   if(!st.order.length&&isObj(s.prio)) st.order=[...BASE,...st.custom].map((b,i)=>[b.id,(s.prio[b.id]||2)*100+i]).sort((a,b)=>a[1]-b[1]).map(a=>a[0]);
@@ -340,7 +349,13 @@ const SLACK=2; // 近くを寄り道: a booth may slip at most this many places 
 
 let route=[];
 function plan(cur,list){ // list is in ranking order
-  if(st.mode==='short') return orderFrom(cur,list);
+  if(st.mode==='short'){
+    if(!st.topFirst) return orderFrom(cur,list);
+    // 後回し: shortest path over the top-ranked booths first, then over the rest
+    const hi=list.filter(s=>rankOf(s)<st.topN), lo=list.filter(s=>rankOf(s)>=st.topN);
+    const a=hi.length?orderFrom(cur,hi):[];
+    return a.concat(lo.length?orderFrom(a.length?a[a.length-1]:cur,lo):[]);
+  }
   if(st.mode==='strict') return list.slice();
   const out=[], rest=list.map((s,r)=>({s,r}));
   for(let t=0;rest.length;t++){
@@ -459,6 +474,12 @@ function renderTabs(){
 }
 function segs(){
   if(!usable(st.start)) st.start='e1s';
+  document.getElementById('topRow').hidden=st.mode!=='short';
+  const tf=document.getElementById('topFirst'), tn=document.getElementById('topN');
+  tf.checked=st.topFirst; tn.value=st.topN; tn.disabled=!st.topFirst;
+  document.getElementById('topRest').textContent=st.topN+1;
+  tf.onchange=()=>{st.topFirst=tf.checked;save();refresh()};
+  tn.onchange=()=>{const v=Math.round(+tn.value); st.topN=Math.min(50,Math.max(1,Number.isFinite(v)?v:5)); save(); refresh()};
   [['startSeg','start'],['modeSeg','mode'],['timeSeg','time']].forEach(([id,k])=>{
     document.querySelectorAll('#'+id+' button').forEach(b=>{b.setAttribute('aria-pressed',st[k]===b.dataset.v);
       b.disabled=k==='start'&&!usable(b.dataset.v);
@@ -549,7 +570,7 @@ function renderRemoved(){
 let toastT=0;
 function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600)}
 function reordered(){
-  if(st.mode==='short') toast('並べ替えました。いまは「最短距離」なので、ルートは変わりません');
+  if(st.mode==='short'&&!st.topFirst) toast('並べ替えました。いまは「最短距離」なので、ルートは変わりません');
   else toast(route.length?`巡回ルートを更新しました（最初は ${route[0].name}）`:'並べ替えました');
 }
 // write a reordered group (one building, or everything) back into the global order
@@ -559,7 +580,7 @@ function applyGroupOrder(ids){
 }
 function renderRank(focusId){
   const box=document.getElementById('rank'); box.replaceChildren();
-  document.getElementById('shortWarn').hidden=st.mode!=='short';
+  document.getElementById('shortWarn').hidden=!(st.mode==='short'&&!st.topFirst);
   document.querySelectorAll('#splitSeg button').forEach(b=>{b.setAttribute('aria-pressed',String(st.split)===(b.dataset.v==='1'?'true':'false'));
     b.onclick=()=>{st.split=b.dataset.v==='1';save();refresh()}});
   document.getElementById('splitNote').textContent=(st.split?'第一展示場と第二展示場（1F・2F）を別々に並べます。スタート地点の建物を回り終えてから、もう一方へ1回だけ移動します。第二展示場は1階と2階を行き来しないよう、最上位のブースがある階を先に回り切ってからもう一方の階へ移ります（そのため順位どおりにならないことがあります）。':'すべてのブースを1つのリストで並べます。建物の行き来が増えることがあります。')+' ⠿ をドラッグして並べ替え、上ほど優先です（⠿ にフォーカスして ↑↓ キーでも動かせます）。';

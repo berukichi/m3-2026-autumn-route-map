@@ -338,7 +338,17 @@ function compute(){
   const first=bldOf(SP());
   const groups=st.split?[todo.filter(s=>bldOf(s)===first),todo.filter(s=>bldOf(s)!==first)]:[todo];
   route=[]; let cur=SP();
-  groups.forEach(g=>{if(!g.length)return; const o=plan(cur,g); route.push(...o); cur=o[o.length-1]});
+  groups.forEach(g=>{if(!g.length)return; const o=st.split&&bldOf(g[0])==='2'?planHall2(cur,g):plan(cur,g); route.push(...o); cur=o[o.length-1]});
+}
+// 第二展示場: finish one floor before taking the escalator, even if that bends the ranking.
+// The floor holding the best-ranked booth goes first; 最短距離 picks whichever floor order walks less.
+function planHall2(cur,g){
+  const f1=g.filter(s=>s.hall==='H2F1'), f2=g.filter(s=>s.hall==='H2F2');
+  if(!f1.length||!f2.length) return plan(cur,g);
+  const run=floors=>{let c=cur,out=[];floors.forEach(f=>{const o=plan(c,f);out.push(...o);c=o[o.length-1]});return out};
+  const len=o=>o.reduce((a,s,i)=>a+dist(i?o[i-1]:cur,s),0);
+  if(st.mode==='short'){const a=run([f1,f2]),b=run([f2,f1]);return len(a)<=len(b)?a:b}
+  return g[0].hall==='H2F1'?run([f1,f2]):run([f2,f1]);
 }
 
 /* map */
@@ -534,7 +544,7 @@ function renderRank(focusId){
   document.getElementById('shortWarn').hidden=st.mode!=='short';
   document.querySelectorAll('#splitSeg button').forEach(b=>{b.setAttribute('aria-pressed',String(st.split)===(b.dataset.v==='1'?'true':'false'));
     b.onclick=()=>{st.split=b.dataset.v==='1';save();refresh()}});
-  document.getElementById('splitNote').textContent=(st.split?'第一展示場と第二展示場（1F・2F）を別々に並べます。スタート地点の建物を回り終えてから、もう一方へ1回だけ移動します。':'すべてのブースを1つのリストで並べます。建物の行き来が増えることがあります。')+' ⠿ をドラッグして並べ替え、上ほど優先です（⠿ にフォーカスして ↑↓ キーでも動かせます）。';
+  document.getElementById('splitNote').textContent=(st.split?'第一展示場と第二展示場（1F・2F）を別々に並べます。スタート地点の建物を回り終えてから、もう一方へ1回だけ移動します。第二展示場は1階と2階を行き来しないよう、最上位のブースがある階を先に回り切ってからもう一方の階へ移ります（そのため順位どおりにならないことがあります）。':'すべてのブースを1つのリストで並べます。建物の行き来が増えることがあります。')+' ⠿ をドラッグして並べ替え、上ほど優先です（⠿ にフォーカスして ↑↓ キーでも動かせます）。';
   const groups=st.split?['1','2'].map(b=>({title:BLD[b],ids:st.order.filter(id=>bldOf(byId(id))===b)})):[{title:'',ids:st.order}];
   if(st.split&&bldOf(SP())==='2') groups.reverse();
   groups.forEach(g=>{

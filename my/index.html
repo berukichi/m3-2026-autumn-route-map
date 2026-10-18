@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>M3秋2026 巡回マップ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* Layout: phone-first single column — sticky hall tabs, zoomable map, then the ordered route list */
+:root{
+  --bg:#f4f3f9; --surface:#ffffff; --ink:#1d1b33; --muted:#686583; --line:#d8d5e7; --desk:#e6e4f0; --desk-ink:#9a97b3;
+  --accent:#c2346d; --p1:#c2346d; --p2:#3b58d4; --p3:#86849e; --ok:#2b8a57; --hall:#3a3757;
+  --f-display:"Dela Gothic One","Zen Kaku Gothic New",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#13121d; --surface:#1d1b2c; --ink:#ecebf6; --muted:#a3a0bf; --line:#34314c; --desk:#2a2840; --desk-ink:#6f6c8c;
+  --accent:#ff6c9f; --p1:#ff6c9f; --p2:#7f96ff; --p3:#8d8aa8; --ok:#5cc98a; --hall:#b9b6d6; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#13121d; --surface:#1d1b2c; --ink:#ecebf6; --muted:#a3a0bf; --line:#34314c; --desk:#2a2840; --desk-ink:#6f6c8c;
+  --accent:#ff6c9f; --p1:#ff6c9f; --p2:#7f96ff; --p3:#8d8aa8; --ok:#5cc98a; --hall:#b9b6d6; color-scheme:dark}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:0 48px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{padding-top:18px;display:flex;flex-direction:column;gap:2px}
+h1{font-family:var(--f-display);font-weight:400;font-size:1.55rem;line-height:1.2;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1 em{font-style:normal;color:var(--accent)}
+.sub{color:var(--muted);font-size:.85rem}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-block:8px}
+.tab{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:7px 4px;font:inherit;font-size:.8rem;line-height:1.25;cursor:pointer;display:flex;flex-direction:column;align-items:center}
+.tab b{font-size:.9rem}
+.tab .n{font-family:var(--f-mono);font-size:.72rem;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab[aria-selected="true"] .n{color:inherit;opacity:.75}
+.mapcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;position:relative}
+.mapscroll{overflow:auto;max-height:62vh;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+.mapscroll svg{display:block}
+.zoom{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
+.zoom button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 1.1rem var(--f-mono);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.maphint{font-size:.75rem;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px 14px}
+.lg{display:inline-flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.panel{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.lbl{font-size:.72rem;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--ink);font:inherit;font-size:.82rem;padding:7px 11px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.summary{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.85rem;color:var(--muted)}
+.summary b{color:var(--ink);font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+ol.route{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.stop{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:34px 1fr;gap:4px 10px;align-items:start}
+.stop.done{opacity:.55}
+.num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 .85rem var(--f-mono);background:var(--pc,var(--p2))}
+.stop.done .num{background:var(--ok)}
+.body{min-width:0;display:flex;flex-direction:column;gap:6px}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.name{font-weight:700;font-size:1rem;cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.booth{font-family:var(--f-mono);font-weight:700;font-size:.95rem;white-space:nowrap}
+.meta{font-size:.78rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 10px}
+.meta a{color:var(--muted)}
+.ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pr{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pr button{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-size:.74rem;padding:4px 8px;cursor:pointer}
+.pr button+button{border-left:1px solid var(--line)}
+.pr button[aria-pressed="true"]{color:#fff}
+.pr button[data-p="1"][aria-pressed="true"]{background:var(--p1)}
+.pr button[data-p="2"][aria-pressed="true"]{background:var(--p2)}
+.pr button[data-p="3"][aria-pressed="true"]{background:var(--p3)}
+.chk{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;cursor:pointer;padding:3px 8px;border:1px solid var(--line);border-radius:8px}
+.chk input{accent-color:var(--ok);margin:0}
+.move{font-size:.8rem;color:var(--accent);font-weight:700;padding:2px 4px 2px 44px;display:flex;align-items:center;gap:6px}
+h2{font-size:.78rem;letter-spacing:.1em;color:var(--muted);margin:10px 0 0;font-weight:700}
+.note{font-size:.75rem;color:var(--muted)}
+button:focus-visible,input:focus-visible,a:focus-visible,.name:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.addbox input{width:100%;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+ol.results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.res{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.res .rn{min-width:0;display:flex;flex-direction:column;line-height:1.35}
+.res .rn b{overflow-wrap:anywhere}
+.res .rn span{font-size:.75rem;color:var(--muted);overflow-wrap:anywhere}
+.btn{appearance:none;border:1px solid var(--accent);background:transparent;color:var(--accent);font:inherit;font-size:.78rem;font-weight:700;border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+.btn:disabled{border-color:var(--line);color:var(--muted);cursor:default}
+.rm{appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:.74rem;border-radius:8px;padding:4px 8px;cursor:pointer;margin-left:auto}
+.reset{appearance:none;background:none;border:0;color:var(--muted);font:inherit;font-size:.78rem;text-decoration:underline;cursor:pointer;padding:0}
+/* map */
+.m-frame{fill:none;stroke:var(--hall);stroke-width:4}
+.m-desk{fill:var(--desk);stroke:var(--line);stroke-width:1}
+.m-dn{fill:var(--desk-ink);font:500 9px var(--f-mono)}
+.m-bl{fill:var(--hall);font:700 30px var(--f-body)}
+.m-portal{fill:var(--ok)}
+.m-pt{fill:var(--ok);font:700 17px var(--f-body)}
+.m-route{fill:none;stroke:var(--accent);stroke-width:4;stroke-dasharray:10 7;stroke-linecap:round;opacity:.85}
+.m-tgt{stroke:var(--surface);stroke-width:2.5}
+.m-tn{fill:#fff;font:700 15px var(--f-mono)}
+.m-hl{fill:none;stroke:var(--accent);stroke-width:4}
+.m-start{fill:var(--ink)}
+@media (prefers-reduced-motion:no-preference){.m-route{animation:dash 1.4s linear infinite}@keyframes dash{to{stroke-dashoffset:-34}}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>M3<em>秋</em>2026 巡回マップ</h1>
+    <div class="sub">2026年10月25日(日) 東京流通センター ・ <span id="count">18</span>サークル</div>
+  </header>
+
+  <div class="tabs" role="tablist" id="tabs"></div>
+
+  <div class="mapcard">
+    <div class="mapscroll" id="mapscroll"></div>
+    <div class="zoom"><button id="zout" aria-label="縮小">−</button><button id="zin" aria-label="拡大">＋</button></div>
+    <div class="maphint">
+      <span class="lg"><span class="dot" style="background:var(--p1)"></span>最優先</span>
+      <span class="lg"><span class="dot" style="background:var(--p2)"></span>優先</span>
+      <span class="lg"><span class="dot" style="background:var(--p3)"></span>余裕があれば</span>
+      <span class="lg"><span class="dot" style="background:var(--ok)"></span>入口・エスカレーター／訪問済み</span>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="row"><span class="lbl">スタート</span>
+      <div class="seg" id="startSeg"><button data-v="e1">第一展示場 入口</button><button data-v="e2">第二展示場 1F入口</button></div>
+    </div>
+    <div class="row"><span class="lbl">ルート</span>
+      <div class="seg" id="modeSeg"><button data-v="prio">優先度順</button><button data-v="short">最短距離</button></div>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div class="note">優先度順は「最優先→優先→余裕があれば」の順に、各グループ内で歩く距離が短くなるよう並べます。最短距離は優先度を無視して全体を最短化します。建物の移動はなるべく少なくなるよう計算します。サークル名をタップすると地図上の位置に移動します。</div>
+  </section>
+
+  <section>
+    <h2>巡回順</h2>
+    <ol class="route" id="route"></ol>
+  </section>
+  <section class="panel addbox">
+    <h2>ブースを追加</h2>
+    <input type="search" id="q" placeholder="ブース番号（例: コ-21b、T-15ab）" autocomplete="off">
+    <ol class="results" id="results"></ol>
+  </section>
+  <section id="removedSec" hidden>
+    <h2>リストから外したブース</h2>
+    <ol class="results" id="removed"></ol>
+  </section>
+  <section id="doneSec" hidden>
+    <h2>訪問済み</h2>
+    <ol class="route" id="done"></ol>
+  </section>
+  <button class="reset" id="reset">優先度と訪問済みをリセット</button>
+  <p class="note">配置データは M3 Webカタログ（catalog.m3net.jp/2026f）の会場マップから作成。距離は机の座標から求めた目安です。</p>
+</div>
+
+<script>
+const DATA=
+{"desks":[{"id":"か-01","x":273.5,"y":289.5,"width":15,"height":28},{"id":"か-02","x":273.5,"y":317.5,"width":15,"height":28},{"id":"か-03","x":296,"y":331.5,"width":28,"height":15},{"id":"か-04","x":324,"y":331.5,"width":28,"height":15},{"id":"か-05","x":352,"y":331.5,"width":28,"height":15},{"id":"か-06","x":380,"y":331.5,"width":28,"height":15},{"id":"か-07","x":408,"y":331.5,"width":28,"height":15},{"id":"か-08","x":436,"y":331.5,"width":28,"height":15},{"id":"か-09","x":464,"y":331.5,"width":28,"height":15},{"id":"か-10","x":498,"y":331.5,"width":28,"height":15},{"id":"か-11","x":526,"y":331.5,"width":28,"height":15},{"id":"か-12","x":554,"y":331.5,"width":28,"height":15},{"id":"か-13","x":581,"y":331.5,"width":28,"height":15},{"id":"か-14","x":609,"y":331.5,"width":28,"height":15},{"id":"か-15","x":636,"y":331.5,"width":28,"height":15},{"id":"か-16","x":665,"y":331.5,"width":28,"height":15},{"id":"か-17","x":698,"y":331.5,"width":28,"height":15},{"id":"か-18","x":726,"y":331.5,"width":28,"height":15},{"id":"か-19","x":754,"y":331.5,"width":28,"height":15},{"id":"か-20","x":782,"y":331.5,"width":28,"height":15},{"id":"か-21","x":810,"y":331.5,"width":28,"height":15},{"id":"か-22","x":838,"y":331.5,"width":28,"height":15},{"id":"か-23","x":881.5,"y":317.5,"width":15,"height":28},{"id":"か-24","x":881.5,"y":288.5,"width":15,"height":28},{"id":"か-25","x":801.5,"y":289,"width":28,"height":15},{"id":"か-26","x":773.5,"y":289,"width":28,"height":15},{"id":"か-27","x":745,"y":289,"width":28,"height":15},{"id":"か-28","x":715.5,"y":289,"width":28,"height":15},{"id":"か-29","x":687.5,"y":289,"width":28,"height":15},{"id":"か-30","x":659.5,"y":289,"width":28,"height":15},{"id":"か-31","x":632,"y":289,"width":28,"height":15},{"id":"か-32","x":604,"y":289,"width":28,"height":15},{"id":"か-33","x":576,"y":289,"width":28,"height":15},{"id":"か-34","x":548,"y":289,"width":28,"height":15},{"id":"か-35","x":519,"y":289,"width":28,"height":15},{"id":"か-36","x":469.5,"y":289,"width":28,"height":15},{"id":"か-37","x":441.5,"y":289,"width":28,"height":15},{"id":"か-38","x":413.5,"y":289,"width":28,"height":15},{"id":"か-39","x":386,"y":289,"width":28,"height":15},{"id":"か-40","x":358,"y":289,"width":28,"height":15},{"id":"か-41","x":330,"y":289,"width":28,"height":15},{"id":"お-01","x":273.5,"y":396,"width":15,"height":28},{"id":"お-02","x":273.5,"y":424,"width":15,"height":28},{"id":"お-03","x":296,"y":436.5,"width":28,"height":15},{"id":"お-04","x":324,"y":436.5,"width":28,"height":15},{"id":"お-05","x":352,"y":436.5,"width":28,"height":15},{"id":"お-06","x":380,"y":436.5,"width":28,"height":15},{"id":"お-07","x":408,"y":436.5,"width":28,"height":15},{"id":"お-08","x":436,"y":436.5,"width":28,"height":15},{"id":"お-09","x":464,"y":436.5,"width":28,"height":15},{"id":"お-10","x":498.5,"y":436.5,"width":28,"height":15},{"id":"お-11","x":526.5,"y":436.5,"width":28,"height":15},{"id":"お-12","x":554.5,"y":436.5,"width":28,"height":15},{"id":"お-13","x":582.5,"y":436.5,"width":28,"height":15},{"id":"お-14","x":610.5,"y":436.5,"width":28,"height":15},{"id":"お-15","x":638.5,"y":436.5,"width":28,"height":15},{"id":"お-16","x":666.5,"y":436.5,"width":28,"height":15},{"id":"お-17","x":698.5,"y":436.5,"width":28,"height":15},{"id":"お-18","x":726.5,"y":436.5,"width":28,"height":15},{"id":"お-19","x":754.5,"y":436.5,"width":28,"height":15},{"id":"お-20","x":782.5,"y":436.5,"width":28,"height":15},{"id":"お-21","x":810.5,"y":436.5,"width":28,"height":15},{"id":"お-22","x":838.5,"y":436.5,"width":28,"height":15},{"id":"お-23","x":881.5,"y":425,"width":15,"height":28},{"id":"お-24","x":881.5,"y":397,"width":15,"height":28},{"id":"お-25","x":839,"y":396,"width":28,"height":15},{"id":"お-26","x":811,"y":396,"width":28,"height":15},{"id":"お-27","x":782.5,"y":396,"width":28,"height":15},{"id":"お-28","x":735,"y":397,"width":28,"height":15},{"id":"お-29","x":707,"y":397,"width":28,"height":15},{"id":"お-30","x":679,"y":397,"width":28,"height":15},{"id":"お-31","x":651.5,"y":397,"width":28,"height":15},{"id":"お-32","x":623.5,"y":397,"width":28,"height":15},{"id":"お-33","x":595.5,"y":397,"width":28,"height":15},{"id":"お-34","x":554,"y":397,"width":28,"height":15},{"id":"お-35","x":525,"y":397,"width":28,"height":15},{"id":"お-36","x":496,"y":397,"width":28,"height":15},{"id":"お-37","x":468,"y":397,"width":28,"height":15},{"id":"お-38","x":440,"y":397,"width":28,"height":15},{"id":"お-39","x":412.5,"y":397,"width":28,"height":15},{"id":"お-40","x":358,"y":397,"width":28,"height":15},{"id":"お-41","x":330,"y":397,"width":28,"height":15},{"id":"お-42","x":302,"y":397,"width":28,"height":15},{"id":"え-01","x":273,"y":505.5,"width":15,"height":28},{"id":"え-02","x":273,"y":533.5,"width":15,"height":28},{"id":"え-03","x":296,"y":548,"width":28,"height":15},{"id":"え-04","x":324,"y":548,"width":28,"height":15},{"id":"え-05","x":352,"y":548,"width":28,"height":15},{"id":"え-06","x":412,"y":548,"width":28,"height":15},{"id":"え-07","x":440,"y":548,"width":28,"height":15},{"id":"え-08","x":468,"y":548,"width":28,"height":15},{"id":"え-09","x":496,"y":548,"width":28,"height":15},{"id":"え-10","x":524,"y":548,"width":28,"height":15},{"id":"え-11","x":552,"y":548,"width":28,"height":15},{"id":"え-12","x":595,"y":548,"width":28,"height":15},{"id":"え-13","x":623,"y":548,"width":28,"height":15},{"id":"え-14","x":651,"y":548,"width":28,"height":15},{"id":"え-15","x":679,"y":548,"width":28,"height":15},{"id":"え-16","x":707,"y":548,"width":28,"height":15},{"id":"え-17","x":735,"y":548,"width":28,"height":15},{"id":"え-18","x":783,"y":548,"width":28,"height":15},{"id":"え-19","x":811,"y":548,"width":28,"height":15},{"id":"え-20","x":839,"y":548,"width":28,"height":15},{"id":"え-21","x":881.5,"y":535.5,"width":15,"height":28},{"id":"え-22","x":881.5,"y":507.5,"width":15,"height":28},{"id":"え-23","x":839,"y":507.5,"width":28,"height":15},{"id":"え-24","x":811,"y":507.5,"width":28,"height":15},{"id":"え-25","x":783,"y":507.5,"width":28,"height":15},{"id":"え-26","x":755,"y":507.5,"width":28,"height":15},{"id":"え-27","x":727,"y":507.5,"width":28,"height":15},{"id":"え-28","x":699,"y":507.5,"width":28,"height":15},{"id":"え-29","x":666.5,"y":507.5,"width":28,"height":15},{"id":"え-30","x":638.5,"y":507.5,"width":28,"height":15},{"id":"え-31","x":610.5,"y":507.5,"width":28,"height":15},{"id":"え-32","x":582.5,"y":507.5,"width":28,"height":15},{"id":"え-33","x":554.5,"y":507.5,"width":28,"height":15},{"id":"え-34","x":526.5,"y":507.5,"width":28,"height":15},{"id":"え-37","x":436,"y":507.5,"width":28,"height":15},{"id":"え-38","x":408,"y":507.5,"width":28,"height":15},{"id":"え-39","x":380,"y":507.5,"width":28,"height":15},{"id":"え-40","x":352,"y":507.5,"width":28,"height":15},{"id":"え-41","x":324,"y":507.5,"width":28,"height":15},{"id":"え-42","x":296,"y":507.5,"width":28,"height":15},{"id":"え-35","x":497.5,"y":507.5,"width":28,"height":15},{"id":"え-36","x":469.5,"y":507.5,"width":28,"height":15},{"id":"う-01","x":296,"y":598.5,"width":15,"height":28},{"id":"う-02","x":296,"y":626.5,"width":15,"height":28},{"id":"う-03","x":319.5,"y":639.5,"width":28,"height":15},{"id":"う-04","x":347.5,"y":639.5,"width":28,"height":15},{"id":"う-05","x":375.5,"y":639.5,"width":28,"height":15},{"id":"う-06","x":403.5,"y":639.5,"width":28,"height":15},{"id":"う-07","x":431.5,"y":639.5,"width":28,"height":15},{"id":"う-08","x":459.5,"y":639.5,"width":28,"height":15},{"id":"う-09","x":492,"y":639.5,"width":28,"height":15},{"id":"う-10","x":520,"y":639.5,"width":28,"height":15},{"id":"う-11","x":548,"y":639.5,"width":28,"height":15},{"id":"う-12","x":576,"y":639.5,"width":28,"height":15},{"id":"う-13","x":604,"y":639.5,"width":28,"height":15},{"id":"う-14","x":632,"y":639.5,"width":28,"height":15},{"id":"う-15","x":665,"y":639.5,"width":28,"height":15},{"id":"う-16","x":693,"y":639.5,"width":28,"height":15},{"id":"う-17","x":721,"y":639.5,"width":28,"height":15},{"id":"う-18","x":749,"y":639.5,"width":28,"height":15},{"id":"う-19","x":777,"y":639.5,"width":28,"height":15},{"id":"う-20","x":805,"y":639.5,"width":28,"height":15},{"id":"う-21","x":833,"y":639.5,"width":28,"height":15},{"id":"う-22","x":881.5,"y":628.5,"width":15,"height":28},{"id":"う-23","x":881.5,"y":600.5,"width":15,"height":28},{"id":"う-42","x":319.5,"y":600.5,"width":28,"height":15},{"id":"う-41","x":347.5,"y":600.5,"width":28,"height":15},{"id":"う-40","x":375.5,"y":600.5,"width":28,"height":15},{"id":"う-39","x":403.5,"y":600.5,"width":28,"height":15},{"id":"う-38","x":431.5,"y":600.5,"width":28,"height":15},{"id":"う-37","x":459.5,"y":600.5,"width":28,"height":15},{"id":"う-36","x":492,"y":600.5,"width":28,"height":15},{"id":"う-35","x":520,"y":600.5,"width":28,"height":15},{"id":"う-34","x":548,"y":600.5,"width":28,"height":15},{"id":"う-33","x":576,"y":600.5,"width":28,"height":15},{"id":"う-32","x":604,"y":600.5,"width":28,"height":15},{"id":"う-31","x":632,"y":600.5,"width":28,"height":15},{"id":"う-30","x":665,"y":600.5,"width":28,"height":15},{"id":"う-29","x":693,"y":600.5,"width":28,"height":15},{"id":"う-28","x":721,"y":600.5,"width":28,"height":15},{"id":"う-27","x":749,"y":600.5,"width":28,"height":15},{"id":"う-26","x":777,"y":600.5,"width":28,"height":15},{"id":"う-25","x":805,"y":600.5,"width":28,"height":15},{"id":"う-24","x":833,"y":600.5,"width":28,"height":15},{"id":"い-01","x":351,"y":699,"width":15,"height":28},{"id":"い-02","x":351,"y":727,"width":15,"height":28},{"id":"い-03","x":375.5,"y":740,"width":28,"height":15},{"id":"い-04","x":403.5,"y":740,"width":28,"height":15},{"id":"い-05","x":431.5,"y":740,"width":28,"height":15},{"id":"い-06","x":459.5,"y":740,"width":28,"height":15},{"id":"い-07","x":493,"y":740,"width":28,"height":15},{"id":"い-08","x":521,"y":740,"width":28,"height":15},{"id":"い-09","x":549,"y":740,"width":28,"height":15},{"id":"い-10","x":577,"y":740,"width":28,"height":15},{"id":"い-11","x":605,"y":740,"width":28,"height":15},{"id":"い-12","x":633,"y":740,"width":28,"height":15},{"id":"い-13","x":661,"y":740,"width":28,"height":15},{"id":"い-14","x":693,"y":740,"width":28,"height":15},{"id":"い-15","x":721,"y":740,"width":28,"height":15},{"id":"い-16","x":749,"y":740,"width":28,"height":15},{"id":"い-17","x":777,"y":740,"width":28,"height":15},{"id":"い-18","x":805,"y":740,"width":28,"height":15},{"id":"い-19","x":833,"y":740,"width":28,"height":15},{"id":"い-20","x":881.5,"y":726,"width":15,"height":28},{"id":"い-21","x":881.5,"y":698,"width":15,"height":28},{"id":"い-24","x":777.5,"y":699,"width":28,"height":15},{"id":"い-23","x":805.5,"y":699,"width":28,"height":15},{"id":"い-22","x":833.5,"y":699,"width":28,"height":15},{"id":"い-30","x":594,"y":698,"width":28,"height":15},{"id":"い-29","x":622,"y":698,"width":28,"height":15},{"id":"い-28","x":650,"y":698,"width":28,"height":15},{"id":"い-27","x":678,"y":698,"width":28,"height":15},{"id":"い-26","x":706,"y":698,"width":28,"height":15},{"id":"い-25","x":734,"y":698,"width":28,"height":15},{"id":"い-36","x":413.5,"y":698,"width":28,"height":15},{"id":"い-35","x":441.5,"y":698,"width":28,"height":15},{"id":"い-34","x":469.5,"y":698,"width":28,"height":15},{"id":"い-33","x":497.5,"y":698,"width":28,"height":15},{"id":"い-32","x":525.5,"y":698,"width":28,"height":15},{"id":"い-31","x":553.5,"y":698,"width":28,"height":15},{"id":"あ-06","x":657,"y":812.5,"width":28,"height":15},{"id":"あ-05","x":685,"y":812.5,"width":28,"height":15},{"id":"あ-04","x":713,"y":812.5,"width":28,"height":15},{"id":"あ-03","x":741,"y":812.5,"width":28,"height":15},{"id":"あ-02","x":769,"y":812.5,"width":28,"height":15},{"id":"あ-01","x":797,"y":812.5,"width":28,"height":15},{"id":"あ-07","x":628.5,"y":812.5,"width":28,"height":15},{"id":"あ-11","x":507.5,"y":812.5,"width":28,"height":15},{"id":"あ-10","x":535.5,"y":812.5,"width":28,"height":15},{"id":"あ-09","x":563.5,"y":812.5,"width":28,"height":15},{"id":"あ-08","x":591.5,"y":812.5,"width":28,"height":15},{"id":"あ-12","x":479,"y":812.5,"width":28,"height":15},{"id":"あ-13","x":451,"y":812.5,"width":28,"height":15},{"id":"あ-15","x":388,"y":812.5,"width":28,"height":15},{"id":"あ-14","x":416,"y":812.5,"width":28,"height":15},{"id":"あ-16","x":359.5,"y":812.5,"width":28,"height":15},{"id":"あ-17","x":331.5,"y":812.5,"width":28,"height":15},{"id":"シ-01","x":1396,"y":263,"width":15,"height":28},{"id":"シ-02","x":1396,"y":291,"width":15,"height":28},{"id":"シ-03","x":1424,"y":304,"width":28,"height":15},{"id":"シ-04","x":1452,"y":304,"width":28,"height":15},{"id":"シ-05","x":1480,"y":304,"width":28,"height":15},{"id":"シ-06","x":1508,"y":304,"width":28,"height":15},{"id":"シ-07","x":1536,"y":304,"width":28,"height":15},{"id":"シ-08","x":1564,"y":304,"width":28,"height":15},{"id":"シ-09","x":1592,"y":304,"width":28,"height":15},{"id":"シ-10","x":1628,"y":304,"width":28,"height":15},{"id":"シ-11","x":1656,"y":304,"width":28,"height":15},{"id":"シ-12","x":1684,"y":304,"width":28,"height":15},{"id":"シ-13","x":1712,"y":304,"width":28,"height":15},{"id":"シ-14","x":1740,"y":304,"width":28,"height":15},{"id":"シ-15","x":1768,"y":304,"width":28,"height":15},{"id":"シ-16","x":1796,"y":304,"width":28,"height":15},{"id":"シ-17","x":1829,"y":304,"width":28,"height":15},{"id":"シ-18","x":1857,"y":304,"width":28,"height":15},{"id":"シ-19","x":1885,"y":304,"width":28,"height":15},{"id":"シ-20","x":1913,"y":304,"width":28,"height":15},{"id":"シ-21","x":1941,"y":304,"width":28,"height":15},{"id":"シ-22","x":1979.5,"y":290,"width":15,"height":28},{"id":"シ-23","x":1979.5,"y":262,"width":15,"height":28},{"id":"シ-24","x":1940,"y":262,"width":28,"height":15},{"id":"シ-25","x":1912,"y":262,"width":28,"height":15},{"id":"シ-26","x":1884,"y":262,"width":28,"height":15},{"id":"シ-27","x":1856,"y":262,"width":28,"height":15},{"id":"シ-28","x":1828,"y":262,"width":28,"height":15},{"id":"シ-29","x":1794,"y":262,"width":28,"height":15},{"id":"シ-30","x":1766,"y":262,"width":28,"height":15},{"id":"シ-31","x":1738,"y":262,"width":28,"height":15},{"id":"シ-32","x":1710,"y":262,"width":28,"height":15},{"id":"シ-33","x":1682,"y":262,"width":28,"height":15},{"id":"シ-34","x":1654,"y":262,"width":28,"height":15},{"id":"シ-35","x":1593,"y":262,"width":28,"height":15},{"id":"シ-36","x":1565,"y":262,"width":28,"height":15},{"id":"シ-37","x":1537,"y":262,"width":28,"height":15},{"id":"シ-38","x":1509,"y":262,"width":28,"height":15},{"id":"シ-39","x":1481,"y":262,"width":28,"height":15},{"id":"シ-40","x":1453,"y":262,"width":28,"height":15},{"id":"シ-41","x":1425,"y":262,"width":28,"height":15},{"id":"サ-01","x":1396,"y":367,"width":15,"height":28},{"id":"サ-02","x":1396,"y":395,"width":15,"height":28},{"id":"サ-03","x":1425,"y":409,"width":28,"height":15},{"id":"サ-04","x":1453,"y":409,"width":28,"height":15},{"id":"サ-05","x":1481,"y":409,"width":28,"height":15},{"id":"サ-06","x":1509,"y":409,"width":28,"height":15},{"id":"サ-07","x":1537,"y":409,"width":28,"height":15},{"id":"サ-08","x":1565,"y":409,"width":28,"height":15},{"id":"サ-09","x":1593,"y":409,"width":28,"height":15},{"id":"サ-10","x":1629,"y":409,"width":28,"height":15},{"id":"サ-11","x":1657,"y":409,"width":28,"height":15},{"id":"サ-12","x":1685,"y":409,"width":28,"height":15},{"id":"サ-13","x":1713,"y":409,"width":28,"height":15},{"id":"サ-14","x":1741,"y":409,"width":28,"height":15},{"id":"サ-15","x":1769,"y":409,"width":28,"height":15},{"id":"サ-16","x":1797,"y":409,"width":28,"height":15},{"id":"サ-17","x":1830,"y":409,"width":28,"height":15},{"id":"サ-18","x":1858,"y":409,"width":28,"height":15},{"id":"サ-19","x":1886,"y":409,"width":28,"height":15},{"id":"サ-20","x":1914,"y":409,"width":28,"height":15},{"id":"サ-21","x":1942,"y":409,"width":28,"height":15},{"id":"サ-22","x":1979.5,"y":395,"width":15,"height":28},{"id":"サ-23","x":1979.5,"y":367,"width":15,"height":28},{"id":"サ-24","x":1940,"y":365,"width":28,"height":15},{"id":"サ-25","x":1912,"y":365,"width":28,"height":15},{"id":"サ-26","x":1884,"y":365,"width":28,"height":15},{"id":"サ-27","x":1856,"y":365,"width":28,"height":15},{"id":"サ-28","x":1828,"y":365,"width":28,"height":15},{"id":"サ-29","x":1794,"y":365,"width":28,"height":15},{"id":"サ-30","x":1766,"y":365,"width":28,"height":15},{"id":"サ-31","x":1738,"y":365,"width":28,"height":15},{"id":"サ-32","x":1710,"y":365,"width":28,"height":15},{"id":"サ-33","x":1682,"y":365,"width":28,"height":15},{"id":"サ-34","x":1654,"y":365,"width":28,"height":15},{"id":"サ-35","x":1626,"y":365,"width":28,"height":15},{"id":"サ-36","x":1593,"y":365,"width":28,"height":15},{"id":"サ-37","x":1565,"y":365,"width":28,"height":15},{"id":"サ-38","x":1537,"y":365,"width":28,"height":15},{"id":"サ-39","x":1509,"y":365,"width":28,"height":15},{"id":"サ-40","x":1481,"y":365,"width":28,"height":15},{"id":"サ-41","x":1453,"y":365,"width":28,"height":15},{"id":"サ-42","x":1425,"y":365,"width":28,"height":15},{"id":"コ-01","x":1396,"y":490.5,"width":15,"height":28},{"id":"コ-02","x":1396,"y":518.5,"width":15,"height":28},{"id":"コ-03","x":1425,"y":532.5,"width":28,"height":15},{"id":"コ-04","x":1453,"y":532.5,"width":28,"height":15},{"id":"コ-05","x":1481,"y":532.5,"width":28,"height":15},{"id":"コ-06","x":1530,"y":532.5,"width":28,"height":15},{"id":"コ-07","x":1558,"y":532.5,"width":28,"height":15},{"id":"コ-08","x":1586,"y":532.5,"width":28,"height":15},{"id":"コ-09","x":1614,"y":532.5,"width":28,"height":15},{"id":"コ-10","x":1642,"y":532.5,"width":28,"height":15},{"id":"コ-11","x":1670,"y":532.5,"width":28,"height":15},{"id":"コ-12","x":1712,"y":533,"width":28,"height":15},{"id":"コ-13","x":1740,"y":533,"width":28,"height":15},{"id":"コ-14","x":1768,"y":533,"width":28,"height":15},{"id":"コ-15","x":1796,"y":533,"width":28,"height":15},{"id":"コ-16","x":1824,"y":533,"width":28,"height":15},{"id":"コ-17","x":1852,"y":533,"width":28,"height":15},{"id":"コ-18","x":1911,"y":533,"width":28,"height":15},{"id":"コ-19","x":1939,"y":533,"width":28,"height":15},{"id":"コ-20","x":1976.5,"y":519.5,"width":15,"height":28},{"id":"コ-21","x":1976.5,"y":491.5,"width":15,"height":28},{"id":"コ-22","x":1940,"y":492.5,"width":28,"height":15},{"id":"コ-23","x":1912,"y":492.5,"width":28,"height":15},{"id":"コ-24","x":1884,"y":492.5,"width":28,"height":15},{"id":"コ-25","x":1856,"y":492.5,"width":28,"height":15},{"id":"コ-26","x":1828,"y":492.5,"width":28,"height":15},{"id":"コ-27","x":1794,"y":492.5,"width":28,"height":15},{"id":"コ-28","x":1766,"y":492.5,"width":28,"height":15},{"id":"コ-29","x":1738,"y":492.5,"width":28,"height":15},{"id":"コ-30","x":1710,"y":492.5,"width":28,"height":15},{"id":"コ-31","x":1682,"y":492.5,"width":28,"height":15},{"id":"コ-32","x":1654,"y":492.5,"width":28,"height":15},{"id":"コ-33","x":1626,"y":492.5,"width":28,"height":15},{"id":"コ-34","x":1593,"y":492.5,"width":28,"height":15},{"id":"コ-35","x":1565,"y":492.5,"width":28,"height":15},{"id":"コ-36","x":1537,"y":492.5,"width":28,"height":15},{"id":"コ-37","x":1509,"y":492.5,"width":28,"height":15},{"id":"コ-38","x":1481,"y":492.5,"width":28,"height":15},{"id":"コ-39","x":1453,"y":492.5,"width":28,"height":15},{"id":"コ-40","x":1425,"y":492.5,"width":28,"height":15},{"id":"ケ-01","x":1396,"y":575,"width":15,"height":28},{"id":"ケ-02","x":1396,"y":603,"width":15,"height":28},{"id":"ケ-03","x":1425,"y":614.5,"width":28,"height":15},{"id":"ケ-04","x":1453,"y":614.5,"width":28,"height":15},{"id":"ケ-05","x":1481,"y":614.5,"width":28,"height":15},{"id":"ケ-06","x":1509,"y":614.5,"width":28,"height":15},{"id":"ケ-07","x":1537,"y":614.5,"width":28,"height":15},{"id":"ケ-08","x":1565,"y":614.5,"width":28,"height":15},{"id":"ケ-09","x":1593,"y":614.5,"width":28,"height":15},{"id":"ケ-10","x":1629,"y":614.5,"width":28,"height":15},{"id":"ケ-11","x":1657,"y":614.5,"width":28,"height":15},{"id":"ケ-12","x":1685,"y":614.5,"width":28,"height":15},{"id":"ケ-13","x":1713,"y":614.5,"width":28,"height":15},{"id":"ケ-14","x":1741,"y":614.5,"width":28,"height":15},{"id":"ケ-15","x":1769,"y":614.5,"width":28,"height":15},{"id":"ケ-16","x":1797,"y":614.5,"width":28,"height":15},{"id":"ケ-17","x":1830,"y":614.5,"width":28,"height":15},{"id":"ケ-18","x":1858,"y":614.5,"width":28,"height":15},{"id":"ケ-19","x":1886,"y":614.5,"width":28,"height":15},{"id":"ケ-20","x":1914,"y":614.5,"width":28,"height":15},{"id":"ケ-21","x":1942,"y":614.5,"width":28,"height":15},{"id":"ケ-22","x":1976.5,"y":600,"width":15,"height":28},{"id":"ケ-23","x":1976.5,"y":572,"width":15,"height":28},{"id":"ケ-24","x":1940,"y":572,"width":28,"height":15},{"id":"ケ-25","x":1912,"y":572,"width":28,"height":15},{"id":"ケ-26","x":1884,"y":572,"width":28,"height":15},{"id":"ケ-27","x":1856,"y":572,"width":28,"height":15},{"id":"ケ-28","x":1828,"y":572,"width":28,"height":15},{"id":"ケ-29","x":1794,"y":572,"width":28,"height":15},{"id":"ケ-30","x":1766,"y":572,"width":28,"height":15},{"id":"ケ-31","x":1738,"y":572,"width":28,"height":15},{"id":"ケ-32","x":1710,"y":572,"width":28,"height":15},{"id":"ケ-33","x":1682,"y":572,"width":28,"height":15},{"id":"ケ-34","x":1654,"y":572,"width":28,"height":15},{"id":"ケ-35","x":1626,"y":572,"width":28,"height":15},{"id":"ケ-36","x":1593,"y":572,"width":28,"height":15},{"id":"ケ-37","x":1565,"y":572,"width":28,"height":15},{"id":"ケ-38","x":1537,"y":572,"width":28,"height":15},{"id":"ケ-39","x":1509,"y":572,"width":28,"height":15},{"id":"ケ-40","x":1481,"y":572,"width":28,"height":15},{"id":"ケ-41","x":1453,"y":572,"width":28,"height":15},{"id":"ケ-42","x":1425,"y":572,"width":28,"height":15},{"id":"ク-01","x":1463,"y":678,"width":15,"height":28},{"id":"ク-02","x":1463,"y":706,"width":15,"height":28},{"id":"ク-03","x":1485,"y":719,"width":28,"height":15},{"id":"ク-04","x":1513,"y":719,"width":28,"height":15},{"id":"ク-05","x":1541,"y":719,"width":28,"height":15},{"id":"ク-06","x":1569,"y":719,"width":28,"height":15},{"id":"ク-07","x":1612,"y":719,"width":28,"height":15},{"id":"ク-08","x":1640,"y":719,"width":28,"height":15},{"id":"ク-09","x":1668,"y":719,"width":28,"height":15},{"id":"ク-10","x":1696,"y":719,"width":28,"height":15},{"id":"ク-11","x":1724,"y":719,"width":28,"height":15},{"id":"ク-12","x":1752,"y":719,"width":28,"height":15},{"id":"ク-13","x":1780,"y":719,"width":28,"height":15},{"id":"ク-14","x":1824,"y":719,"width":28,"height":15},{"id":"ク-15","x":1852,"y":719,"width":28,"height":15},{"id":"ク-16","x":1880,"y":719,"width":28,"height":15},{"id":"ク-17","x":1908,"y":719,"width":28,"height":15},{"id":"ク-18","x":1936,"y":719,"width":28,"height":15},{"id":"ク-19","x":1976.5,"y":705,"width":15,"height":28},{"id":"ク-20","x":1976.5,"y":677,"width":15,"height":28},{"id":"ク-21","x":1936,"y":677,"width":28,"height":15},{"id":"ク-22","x":1908,"y":677,"width":28,"height":15},{"id":"ク-23","x":1880,"y":677,"width":28,"height":15},{"id":"ク-24","x":1852,"y":677,"width":28,"height":15},{"id":"ク-25","x":1824,"y":677,"width":28,"height":15},{"id":"ク-26","x":1780,"y":677,"width":28,"height":15},{"id":"ク-27","x":1752,"y":677,"width":28,"height":15},{"id":"ク-28","x":1724,"y":677,"width":28,"height":15},{"id":"ク-29","x":1696,"y":677,"width":28,"height":15},{"id":"ク-30","x":1668,"y":677,"width":28,"height":15},{"id":"ク-31","x":1640,"y":677,"width":28,"height":15},{"id":"ク-32","x":1612,"y":677,"width":28,"height":15},{"id":"ク-33","x":1569,"y":678,"width":28,"height":15},{"id":"ク-34","x":1541,"y":678,"width":28,"height":15},{"id":"ク-35","x":1513,"y":678,"width":28,"height":15},{"id":"ク-36","x":1485,"y":678,"width":28,"height":15},{"id":"キ-13","x":1577,"y":800,"width":28,"height":15},{"id":"キ-12","x":1605,"y":800,"width":28,"height":15},{"id":"キ-11","x":1633,"y":800,"width":28,"height":15},{"id":"キ-10","x":1661,"y":800,"width":28,"height":15},{"id":"キ-09","x":1689,"y":800,"width":28,"height":15},{"id":"キ-08","x":1729,"y":800,"width":28,"height":15},{"id":"キ-07","x":1757,"y":800,"width":28,"height":15},{"id":"キ-06","x":1785,"y":800,"width":28,"height":15},{"id":"キ-05","x":1813,"y":800,"width":28,"height":15},{"id":"キ-04","x":1841,"y":800,"width":28,"height":15},{"id":"キ-03","x":1869,"y":800,"width":28,"height":15},{"id":"キ-02","x":1897,"y":800,"width":28,"height":15},{"id":"キ-01","x":1925,"y":800,"width":28,"height":15},{"id":"B-02","x":346.5,"y":1131.5,"width":28,"height":15},{"id":"B-01","x":374.5,"y":1131.5,"width":28,"height":15},{"id":"B-03","x":347.5,"y":1151,"width":15,"height":28},{"id":"B-04","x":347.5,"y":1178,"width":15,"height":28},{"id":"B-05","x":347.5,"y":1207,"width":15,"height":28},{"id":"B-06","x":347.5,"y":1236,"width":15,"height":28},{"id":"B-07","x":347.5,"y":1263,"width":15,"height":28},{"id":"B-08","x":347.5,"y":1312,"width":15,"height":28},{"id":"B-09","x":347.5,"y":1340,"width":15,"height":28},{"id":"B-10","x":347.5,"y":1368,"width":15,"height":28},{"id":"B-11","x":347.5,"y":1396,"width":15,"height":28},{"id":"B-12","x":347.5,"y":1424,"width":15,"height":28},{"id":"B-13","x":347.5,"y":1458.5,"width":28,"height":15},{"id":"B-14","x":375.5,"y":1458.5,"width":28,"height":15},{"id":"B-15","x":388,"y":1424,"width":15,"height":28},{"id":"B-16","x":388,"y":1396,"width":15,"height":28},{"id":"B-17","x":388,"y":1368,"width":15,"height":28},{"id":"B-18","x":388,"y":1340,"width":15,"height":28},{"id":"B-19","x":388,"y":1312,"width":15,"height":28},{"id":"B-20","x":388,"y":1263,"width":15,"height":28},{"id":"B-21","x":388,"y":1235,"width":15,"height":28},{"id":"B-22","x":388,"y":1207,"width":15,"height":28},{"id":"B-23","x":388,"y":1179,"width":15,"height":28},{"id":"B-24","x":388,"y":1151,"width":15,"height":28},{"id":"C-02","x":454,"y":1131,"width":28,"height":15},{"id":"C-01","x":482,"y":1131,"width":28,"height":15},{"id":"C-03","x":454,"y":1152,"width":15,"height":28},{"id":"C-04","x":454,"y":1180,"width":15,"height":28},{"id":"C-05","x":454,"y":1208,"width":15,"height":28},{"id":"C-06","x":454,"y":1236,"width":15,"height":28},{"id":"C-07","x":454,"y":1264,"width":15,"height":28},{"id":"C-08","x":454,"y":1312,"width":15,"height":28},{"id":"C-09","x":454,"y":1341,"width":15,"height":28},{"id":"C-10","x":454,"y":1369,"width":15,"height":28},{"id":"C-11","x":454,"y":1397,"width":15,"height":28},{"id":"C-12","x":454,"y":1425,"width":15,"height":28},{"id":"C-13","x":454,"y":1458.5,"width":28,"height":15},{"id":"C-14","x":482,"y":1458.5,"width":28,"height":15},{"id":"C-15","x":495,"y":1424,"width":15,"height":28},{"id":"C-16","x":495,"y":1396,"width":15,"height":28},{"id":"C-17","x":495,"y":1368,"width":15,"height":28},{"id":"C-18","x":495,"y":1340,"width":15,"height":28},{"id":"C-19","x":495,"y":1312,"width":15,"height":28},{"id":"C-20","x":495,"y":1264,"width":15,"height":28},{"id":"C-21","x":495,"y":1236,"width":15,"height":28},{"id":"C-22","x":495,"y":1208,"width":15,"height":28},{"id":"C-23","x":495,"y":1180,"width":15,"height":28},{"id":"C-24","x":495,"y":1152,"width":15,"height":28},{"id":"D-02","x":562,"y":1130,"width":28,"height":15},{"id":"D-01","x":590,"y":1130,"width":28,"height":15},{"id":"D-03","x":562,"y":1152,"width":15,"height":28},{"id":"D-04","x":562,"y":1180,"width":15,"height":28},{"id":"D-05","x":562,"y":1208,"width":15,"height":28},{"id":"D-06","x":562,"y":1236,"width":15,"height":28},{"id":"D-07","x":562,"y":1264,"width":15,"height":28},{"id":"D-08","x":562,"y":1311,"width":15,"height":28},{"id":"D-09","x":562,"y":1339,"width":15,"height":28},{"id":"D-10","x":562,"y":1367,"width":15,"height":28},{"id":"D-11","x":562,"y":1395,"width":15,"height":28},{"id":"D-12","x":562,"y":1423.5,"width":15,"height":28},{"id":"D-13","x":562,"y":1459,"width":28,"height":15},{"id":"D-14","x":590,"y":1459,"width":28,"height":15},{"id":"D-15","x":603,"y":1423,"width":15,"height":28},{"id":"D-16","x":603,"y":1395,"width":15,"height":28},{"id":"D-17","x":603,"y":1367,"width":15,"height":28},{"id":"D-18","x":603,"y":1339,"width":15,"height":28},{"id":"D-19","x":603,"y":1311,"width":15,"height":28},{"id":"D-20","x":603,"y":1264,"width":15,"height":28},{"id":"D-21","x":603,"y":1236,"width":15,"height":28},{"id":"D-22","x":603,"y":1208,"width":15,"height":28},{"id":"D-23","x":603,"y":1180,"width":15,"height":28},{"id":"D-24","x":603,"y":1152,"width":15,"height":28},{"id":"F-02","x":772.5,"y":1129,"width":28,"height":15},{"id":"F-01","x":800.5,"y":1129,"width":28,"height":15},{"id":"F-03","x":772.5,"y":1152,"width":15,"height":28},{"id":"F-04","x":772.5,"y":1181,"width":15,"height":28},{"id":"F-05","x":772.5,"y":1209,"width":15,"height":28},{"id":"F-06","x":772.5,"y":1237,"width":15,"height":28},{"id":"F-07","x":772.5,"y":1265,"width":15,"height":28},{"id":"F-08","x":772.5,"y":1311,"width":15,"height":28},{"id":"F-09","x":772.5,"y":1339,"width":15,"height":28},{"id":"F-10","x":772.5,"y":1367,"width":15,"height":28},{"id":"F-11","x":772.5,"y":1395,"width":15,"height":28},{"id":"F-12","x":772.5,"y":1423.5,"width":15,"height":28},{"id":"F-13","x":772.5,"y":1458.5,"width":28,"height":15},{"id":"F-14","x":800.5,"y":1458.5,"width":28,"height":15},{"id":"F-15","x":814.5,"y":1423,"width":15,"height":28},{"id":"F-16","x":814.5,"y":1395,"width":15,"height":28},{"id":"F-17","x":814.5,"y":1367,"width":15,"height":28},{"id":"F-18","x":814.5,"y":1339,"width":15,"height":28},{"id":"F-19","x":814.5,"y":1311,"width":15,"height":28},{"id":"F-20","x":813.5,"y":1265,"width":15,"height":28},{"id":"F-21","x":813.5,"y":1237,"width":15,"height":28},{"id":"F-22","x":813.5,"y":1209,"width":15,"height":28},{"id":"F-23","x":813.5,"y":1181,"width":15,"height":28},{"id":"F-24","x":813.5,"y":1153,"width":15,"height":28},{"id":"G-02","x":878,"y":1129,"width":28,"height":15},{"id":"G-01","x":906,"y":1129,"width":28,"height":15},{"id":"G-03","x":878,"y":1152,"width":15,"height":28},{"id":"G-04","x":878,"y":1180,"width":15,"height":28},{"id":"G-05","x":878,"y":1208,"width":15,"height":28},{"id":"G-06","x":878,"y":1235,"width":15,"height":28},{"id":"G-07","x":878,"y":1264,"width":15,"height":28},{"id":"G-08","x":878,"y":1311,"width":15,"height":28},{"id":"G-09","x":878,"y":1339,"width":15,"height":28},{"id":"G-10","x":878,"y":1367,"width":15,"height":28},{"id":"G-11","x":878,"y":1395,"width":15,"height":28},{"id":"G-12","x":878,"y":1423,"width":15,"height":28},{"id":"G-13","x":878,"y":1458.5,"width":28,"height":15},{"id":"G-14","x":906,"y":1458.5,"width":28,"height":15},{"id":"G-15","x":919,"y":1423,"width":15,"height":28},{"id":"G-16","x":919,"y":1395,"width":15,"height":28},{"id":"G-17","x":919,"y":1367,"width":15,"height":28},{"id":"G-18","x":919,"y":1339,"width":15,"height":28},{"id":"G-19","x":919,"y":1311,"width":15,"height":28},{"id":"G-20","x":919,"y":1264,"width":15,"height":28},{"id":"G-21","x":919,"y":1236,"width":15,"height":28},{"id":"G-22","x":919,"y":1208,"width":15,"height":28},{"id":"G-23","x":919,"y":1180,"width":15,"height":28},{"id":"G-24","x":919,"y":1152,"width":15,"height":28},{"id":"H-02","x":982.5,"y":1130,"width":28,"height":15},{"id":"H-01","x":1010.5,"y":1130,"width":28,"height":15},{"id":"H-03","x":982.5,"y":1152,"width":15,"height":28},{"id":"H-04","x":982.5,"y":1180,"width":15,"height":28},{"id":"H-05","x":982.5,"y":1208,"width":15,"height":28},{"id":"H-06","x":982.5,"y":1236,"width":15,"height":28},{"id":"H-07","x":982.5,"y":1264,"width":15,"height":28},{"id":"H-08","x":982.5,"y":1311,"width":15,"height":28},{"id":"H-09","x":982.5,"y":1339,"width":15,"height":28},{"id":"H-10","x":982.5,"y":1367,"width":15,"height":28},{"id":"H-11","x":982.5,"y":1395,"width":15,"height":28},{"id":"H-12","x":982.5,"y":1424,"width":15,"height":28},{"id":"H-13","x":982.5,"y":1458.5,"width":28,"height":15},{"id":"H-14","x":1010.5,"y":1458.5,"width":28,"height":15},{"id":"H-15","x":1023.5,"y":1423,"width":15,"height":28},{"id":"H-16","x":1023.5,"y":1395,"width":15,"height":28},{"id":"H-17","x":1023.5,"y":1367,"width":15,"height":28},{"id":"H-18","x":1023.5,"y":1339,"width":15,"height":28},{"id":"H-19","x":1023.5,"y":1311,"width":15,"height":28},{"id":"H-20","x":1023.5,"y":1264,"width":15,"height":28},{"id":"H-21","x":1023.5,"y":1236,"width":15,"height":28},{"id":"H-22","x":1023.5,"y":1208,"width":15,"height":28},{"id":"H-23","x":1023.5,"y":1180,"width":15,"height":28},{"id":"H-24","x":1023.5,"y":1152,"width":15,"height":28},{"id":"J-02","x":1195,"y":1129,"width":28,"height":15},{"id":"J-01","x":1223,"y":1129,"width":28,"height":15},{"id":"J-03","x":1195,"y":1153,"width":15,"height":28},{"id":"J-04","x":1195,"y":1181,"width":15,"height":28},{"id":"J-05","x":1195,"y":1209,"width":15,"height":28},{"id":"J-06","x":1195,"y":1237,"width":15,"height":28},{"id":"J-07","x":1195,"y":1265,"width":15,"height":28},{"id":"J-08","x":1195,"y":1311.5,"width":15,"height":28},{"id":"J-09","x":1195,"y":1339.5,"width":15,"height":28},{"id":"J-10","x":1195,"y":1367.5,"width":15,"height":28},{"id":"J-11","x":1195,"y":1396.5,"width":15,"height":28},{"id":"J-12","x":1195,"y":1425,"width":15,"height":28},{"id":"J-13","x":1195,"y":1459,"width":28,"height":15},{"id":"J-14","x":1223,"y":1459,"width":28,"height":15},{"id":"J-15","x":1236,"y":1424,"width":15,"height":28},{"id":"J-16","x":1236,"y":1396,"width":15,"height":28},{"id":"J-17","x":1236,"y":1368,"width":15,"height":28},{"id":"J-18","x":1236,"y":1340,"width":15,"height":28},{"id":"J-19","x":1236,"y":1312,"width":15,"height":28},{"id":"J-20","x":1236,"y":1264,"width":15,"height":28},{"id":"J-21","x":1236,"y":1236,"width":15,"height":28},{"id":"J-22","x":1236,"y":1208,"width":15,"height":28},{"id":"J-23","x":1236,"y":1180,"width":15,"height":28},{"id":"J-24","x":1236,"y":1152,"width":15,"height":28},{"id":"K-02","x":1301,"y":1129,"width":28,"height":15},{"id":"K-01","x":1329,"y":1129,"width":28,"height":15},{"id":"K-03","x":1301,"y":1152,"width":15,"height":28},{"id":"K-04","x":1301,"y":1180,"width":15,"height":28},{"id":"K-05","x":1301,"y":1208,"width":15,"height":28},{"id":"K-06","x":1301,"y":1236,"width":15,"height":28},{"id":"K-07","x":1301,"y":1265,"width":15,"height":28},{"id":"K-08","x":1301,"y":1312,"width":15,"height":28},{"id":"K-09","x":1301,"y":1340,"width":15,"height":28},{"id":"K-10","x":1301,"y":1368,"width":15,"height":28},{"id":"K-11","x":1301,"y":1396,"width":15,"height":28},{"id":"K-12","x":1301,"y":1424,"width":15,"height":28},{"id":"K-13","x":1301,"y":1459,"width":28,"height":15},{"id":"K-14","x":1329,"y":1459,"width":28,"height":15},{"id":"K-15","x":1342,"y":1424,"width":15,"height":28},{"id":"K-16","x":1342,"y":1396,"width":15,"height":28},{"id":"K-17","x":1342,"y":1368,"width":15,"height":28},{"id":"K-18","x":1342,"y":1340,"width":15,"height":28},{"id":"K-19","x":1342,"y":1312,"width":15,"height":28},{"id":"K-20","x":1342,"y":1265,"width":15,"height":28},{"id":"K-21","x":1342,"y":1237,"width":15,"height":28},{"id":"K-22","x":1342,"y":1209,"width":15,"height":28},{"id":"K-23","x":1342,"y":1181,"width":15,"height":28},{"id":"K-24","x":1342,"y":1153,"width":15,"height":28},{"id":"L-02","x":1409,"y":1129,"width":28,"height":15},{"id":"L-01","x":1437,"y":1129,"width":28,"height":15},{"id":"L-03","x":1409,"y":1152,"width":15,"height":28},{"id":"L-04","x":1409,"y":1180,"width":15,"height":28},{"id":"L-05","x":1409,"y":1208,"width":15,"height":28},{"id":"L-06","x":1409,"y":1236,"width":15,"height":28},{"id":"L-07","x":1409,"y":1264,"width":15,"height":28},{"id":"L-08","x":1409,"y":1312,"width":15,"height":28},{"id":"L-09","x":1409,"y":1339,"width":15,"height":28},{"id":"L-10","x":1409,"y":1367,"width":15,"height":28},{"id":"L-11","x":1409,"y":1395,"width":15,"height":28},{"id":"L-12","x":1409,"y":1423,"width":15,"height":28},{"id":"L-13","x":1409,"y":1458.5,"width":28,"height":15},{"id":"L-14","x":1437,"y":1458.5,"width":28,"height":15},{"id":"L-15","x":1450,"y":1423,"width":15,"height":28},{"id":"L-16","x":1450,"y":1395,"width":15,"height":28},{"id":"L-17","x":1450,"y":1367,"width":15,"height":28},{"id":"L-18","x":1450,"y":1339,"width":15,"height":28},{"id":"L-19","x":1450,"y":1311,"width":15,"height":28},{"id":"L-20","x":1450,"y":1264,"width":15,"height":28},{"id":"L-21","x":1450,"y":1236,"width":15,"height":28},{"id":"L-22","x":1450,"y":1208,"width":15,"height":28},{"id":"L-23","x":1450,"y":1180,"width":15,"height":28},{"id":"L-24","x":1450,"y":1152,"width":15,"height":28},{"id":"P-02","x":1832,"y":1128,"width":28,"height":15},{"id":"P-01","x":1860,"y":1128,"width":28,"height":15},{"id":"P-03","x":1832,"y":1152,"width":15,"height":28},{"id":"P-04","x":1832,"y":1180,"width":15,"height":28},{"id":"P-05","x":1832,"y":1208,"width":15,"height":28},{"id":"P-06","x":1832,"y":1237,"width":15,"height":28},{"id":"P-07","x":1832,"y":1264,"width":15,"height":28},{"id":"P-08","x":1832,"y":1311,"width":15,"height":28},{"id":"P-09","x":1832,"y":1340,"width":15,"height":28},{"id":"P-10","x":1832,"y":1367,"width":15,"height":28},{"id":"P-11","x":1832,"y":1395,"width":15,"height":28},{"id":"P-12","x":1832,"y":1423,"width":15,"height":28},{"id":"P-13","x":1832,"y":1459,"width":28,"height":15},{"id":"P-14","x":1860,"y":1459,"width":28,"height":15},{"id":"P-15","x":1873,"y":1424,"width":15,"height":28},{"id":"P-16","x":1873,"y":1396,"width":15,"height":28},{"id":"P-17","x":1873,"y":1368,"width":15,"height":28},{"id":"P-18","x":1873,"y":1340,"width":15,"height":28},{"id":"P-19","x":1873,"y":1312,"width":15,"height":28},{"id":"P-20","x":1873.5,"y":1264,"width":15,"height":28},{"id":"P-21","x":1873.5,"y":1236,"width":15,"height":28},{"id":"P-22","x":1873.5,"y":1208,"width":15,"height":28},{"id":"P-23","x":1873.5,"y":1180,"width":15,"height":28},{"id":"P-24","x":1873.5,"y":1152,"width":15,"height":28},{"id":"Q-02","x":1938.5,"y":1128,"width":28,"height":15},{"id":"Q-01","x":1966.5,"y":1128,"width":28,"height":15},{"id":"Q-03","x":1939,"y":1152,"width":15,"height":28},{"id":"Q-04","x":1939,"y":1180,"width":15,"height":28},{"id":"Q-05","x":1939,"y":1209,"width":15,"height":28},{"id":"Q-06","x":1939,"y":1236,"width":15,"height":28},{"id":"Q-07","x":1939,"y":1264,"width":15,"height":28},{"id":"Q-08","x":1939,"y":1312,"width":15,"height":28},{"id":"Q-09","x":1939,"y":1340,"width":15,"height":28},{"id":"Q-10","x":1939,"y":1368,"width":15,"height":28},{"id":"Q-11","x":1939,"y":1396,"width":15,"height":28},{"id":"Q-12","x":1939,"y":1424,"width":15,"height":28},{"id":"Q-13","x":1938.5,"y":1458.5,"width":28,"height":15},{"id":"Q-14","x":1966.5,"y":1458.5,"width":28,"height":15},{"id":"Q-15","x":1979.5,"y":1424,"width":15,"height":28},{"id":"Q-16","x":1979.5,"y":1396,"width":15,"height":28},{"id":"Q-17","x":1979.5,"y":1368,"width":15,"height":28},{"id":"Q-18","x":1979.5,"y":1340,"width":15,"height":28},{"id":"Q-19","x":1979.5,"y":1312,"width":15,"height":28},{"id":"Q-20","x":1979.5,"y":1264,"width":15,"height":28},{"id":"Q-21","x":1979.5,"y":1236,"width":15,"height":28},{"id":"Q-22","x":1979.5,"y":1208,"width":15,"height":28},{"id":"Q-23","x":1979.5,"y":1180,"width":15,"height":28},{"id":"Q-24","x":1979.5,"y":1152,"width":15,"height":28},{"id":"V-01","x":282,"y":1054.5,"width":28,"height":15},{"id":"V-02","x":310,"y":1054.5,"width":28,"height":15},{"id":"V-03","x":338,"y":1054.5,"width":28,"height":15},{"id":"V-04","x":366,"y":1054.5,"width":28,"height":15},{"id":"V-05","x":394,"y":1054.5,"width":28,"height":15},{"id":"V-06","x":434,"y":1054.5,"width":28,"height":15},{"id":"V-07","x":462,"y":1054.5,"width":28,"height":15},{"id":"V-08","x":490,"y":1054.5,"width":28,"height":15},{"id":"V-09","x":518,"y":1054.5,"width":28,"height":15},{"id":"V-10","x":546,"y":1054.5,"width":28,"height":15},{"id":"V-11","x":703.5,"y":1054.5,"width":28,"height":15},{"id":"V-12","x":731.5,"y":1054.5,"width":28,"height":15},{"id":"V-13","x":759.5,"y":1054.5,"width":28,"height":15},{"id":"V-14","x":787.5,"y":1054.5,"width":28,"height":15},{"id":"V-15","x":815.5,"y":1054.5,"width":28,"height":15},{"id":"V-16","x":858.5,"y":1054.5,"width":28,"height":15},{"id":"V-17","x":886.5,"y":1054.5,"width":28,"height":15},{"id":"V-18","x":914.5,"y":1054.5,"width":28,"height":15},{"id":"V-19","x":942.5,"y":1054.5,"width":28,"height":15},{"id":"V-20","x":970.5,"y":1054.5,"width":28,"height":15},{"id":"V-21","x":1117,"y":1054.5,"width":28,"height":15},{"id":"V-22","x":1145,"y":1054.5,"width":28,"height":15},{"id":"V-23","x":1173,"y":1054.5,"width":28,"height":15},{"id":"V-24","x":1648,"y":1054.5,"width":28,"height":15},{"id":"V-25","x":1676,"y":1054.5,"width":28,"height":15},{"id":"V-26","x":1704,"y":1054.5,"width":28,"height":15},{"id":"V-27","x":1732,"y":1054.5,"width":28,"height":15},{"id":"V-28","x":1774,"y":1054.5,"width":28,"height":15},{"id":"V-29","x":1802,"y":1054.5,"width":28,"height":15},{"id":"V-30","x":1830,"y":1054.5,"width":28,"height":15},{"id":"V-31","x":1858,"y":1054.5,"width":28,"height":15},{"id":"V-32","x":1886,"y":1054.5,"width":28,"height":15},{"id":"V-33","x":1929,"y":1054.5,"width":28,"height":15},{"id":"V-34","x":1957,"y":1054.5,"width":28,"height":15},{"id":"V-35","x":1985,"y":1054.5,"width":28,"height":15},{"id":"V-36","x":2013,"y":1054.5,"width":28,"height":15},{"id":"V-37","x":2041,"y":1054.5,"width":28,"height":15},{"id":"T-20","x":299,"y":1542,"width":28,"height":15},{"id":"T-19","x":327,"y":1542,"width":28,"height":15},{"id":"T-18","x":403.5,"y":1542,"width":28,"height":15},{"id":"T-17","x":431.5,"y":1542,"width":28,"height":15},{"id":"T-16","x":507,"y":1542,"width":28,"height":15},{"id":"T-15","x":535,"y":1542,"width":28,"height":15},{"id":"T-14","x":824,"y":1542,"width":28,"height":15},{"id":"T-13","x":852,"y":1542,"width":28,"height":15},{"id":"T-12","x":934,"y":1542,"width":28,"height":15},{"id":"T-11","x":962,"y":1542,"width":28,"height":15},{"id":"T-10","x":1248,"y":1542,"width":28,"height":15},{"id":"T-09","x":1276,"y":1542,"width":28,"height":15},{"id":"T-08","x":1668,"y":1542,"width":28,"height":15},{"id":"T-07","x":1696,"y":1542,"width":28,"height":15},{"id":"T-06","x":1776,"y":1542,"width":28,"height":15},{"id":"T-05","x":1805,"y":1542,"width":28,"height":15},{"id":"T-04","x":1883,"y":1542,"width":28,"height":15},{"id":"T-03","x":1911,"y":1542,"width":28,"height":15},{"id":"T-02","x":1992.5,"y":1542,"width":28,"height":15},{"id":"T-01","x":2020.5,"y":1542,"width":28,"height":15},{"id":"E-01","x":663,"y":1124,"width":15,"height":28},{"id":"E-02","x":663,"y":1152,"width":15,"height":28},{"id":"E-03","x":663,"y":1180,"width":15,"height":28},{"id":"E-04","x":663,"y":1208,"width":15,"height":28},{"id":"E-05","x":663,"y":1236,"width":15,"height":28},{"id":"E-06","x":663,"y":1264,"width":15,"height":28},{"id":"E-07","x":663,"y":1311,"width":15,"height":28},{"id":"E-08","x":663,"y":1339,"width":15,"height":28},{"id":"E-09","x":663,"y":1367,"width":15,"height":28},{"id":"E-10","x":663,"y":1395,"width":15,"height":28},{"id":"E-11","x":663,"y":1423,"width":15,"height":28},{"id":"E-12","x":663,"y":1451,"width":15,"height":28},{"id":"E-24","x":714.5,"y":1125,"width":15,"height":28},{"id":"E-23","x":714.5,"y":1153,"width":15,"height":28},{"id":"E-22","x":714.5,"y":1181,"width":15,"height":28},{"id":"E-21","x":714.5,"y":1209,"width":15,"height":28},{"id":"E-20","x":714.5,"y":1237,"width":15,"height":28},{"id":"E-19","x":714.5,"y":1265,"width":15,"height":28},{"id":"E-18","x":714.5,"y":1312,"width":15,"height":28},{"id":"E-17","x":714.5,"y":1340,"width":15,"height":28},{"id":"E-16","x":714.5,"y":1368,"width":15,"height":28},{"id":"E-15","x":714.5,"y":1396,"width":15,"height":28},{"id":"E-14","x":714.5,"y":1424,"width":15,"height":28},{"id":"E-13","x":714.5,"y":1452,"width":15,"height":28},{"id":"I-01","x":1089,"y":1123,"width":15,"height":28},{"id":"I-02","x":1089,"y":1151,"width":15,"height":28},{"id":"I-03","x":1089,"y":1179,"width":15,"height":28},{"id":"I-04","x":1089,"y":1207,"width":15,"height":28},{"id":"I-05","x":1089,"y":1235,"width":15,"height":28},{"id":"I-06","x":1089,"y":1263,"width":15,"height":28},{"id":"I-07","x":1089,"y":1311,"width":15,"height":28},{"id":"I-08","x":1089,"y":1339,"width":15,"height":28},{"id":"I-09","x":1089,"y":1367,"width":15,"height":28},{"id":"I-10","x":1089,"y":1395,"width":15,"height":28},{"id":"I-11","x":1089,"y":1423,"width":15,"height":28},{"id":"I-12","x":1089,"y":1451,"width":15,"height":28},{"id":"I-24","x":1137.5,"y":1123,"width":15,"height":28},{"id":"I-23","x":1137.5,"y":1151,"width":15,"height":28},{"id":"I-22","x":1137.5,"y":1179,"width":15,"height":28},{"id":"I-21","x":1137.5,"y":1207,"width":15,"height":28},{"id":"I-20","x":1137.5,"y":1235,"width":15,"height":28},{"id":"I-19","x":1137.5,"y":1263,"width":15,"height":28},{"id":"I-18","x":1137.5,"y":1311,"width":15,"height":28},{"id":"I-17","x":1137.5,"y":1339,"width":15,"height":28},{"id":"I-16","x":1137.5,"y":1367,"width":15,"height":28},{"id":"I-15","x":1137.5,"y":1395,"width":15,"height":28},{"id":"I-14","x":1137.5,"y":1423,"width":15,"height":28},{"id":"I-13","x":1137.5,"y":1451,"width":15,"height":28},{"id":"M-01","x":1512,"y":1124,"width":15,"height":28},{"id":"M-02","x":1512,"y":1152,"width":15,"height":28},{"id":"M-03","x":1512,"y":1180,"width":15,"height":28},{"id":"M-04","x":1512,"y":1208,"width":15,"height":28},{"id":"M-05","x":1512,"y":1236,"width":15,"height":28},{"id":"M-06","x":1512,"y":1264,"width":15,"height":28},{"id":"M-07","x":1512,"y":1312,"width":15,"height":28},{"id":"M-08","x":1512,"y":1340,"width":15,"height":28},{"id":"M-09","x":1512,"y":1368,"width":15,"height":28},{"id":"M-10","x":1512,"y":1396,"width":15,"height":28},{"id":"M-11","x":1512,"y":1424,"width":15,"height":28},{"id":"M-12","x":1512,"y":1452,"width":15,"height":28},{"id":"M-24","x":1561.5,"y":1124,"width":15,"height":28},{"id":"M-23","x":1561.5,"y":1152,"width":15,"height":28},{"id":"M-22","x":1561.5,"y":1180,"width":15,"height":28},{"id":"M-21","x":1561.5,"y":1208,"width":15,"height":28},{"id":"M-20","x":1561.5,"y":1236,"width":15,"height":28},{"id":"M-19","x":1561.5,"y":1264,"width":15,"height":28},{"id":"M-18","x":1561.5,"y":1312,"width":15,"height":28},{"id":"M-17","x":1561.5,"y":1340,"width":15,"height":28},{"id":"M-16","x":1561.5,"y":1368,"width":15,"height":28},{"id":"M-15","x":1561.5,"y":1396,"width":15,"height":28},{"id":"M-14","x":1561.5,"y":1424,"width":15,"height":28},{"id":"M-13","x":1561.5,"y":1452,"width":15,"height":28},{"id":"O-02","x":1724,"y":1129,"width":28,"height":15},{"id":"O-01","x":1752,"y":1129,"width":28,"height":15},{"id":"O-03","x":1724,"y":1153,"width":15,"height":28},{"id":"O-04","x":1724,"y":1181,"width":15,"height":28},{"id":"O-05","x":1724,"y":1209,"width":15,"height":28},{"id":"O-06","x":1724,"y":1237,"width":15,"height":28},{"id":"O-07","x":1724,"y":1265,"width":15,"height":28},{"id":"O-08","x":1724,"y":1312,"width":15,"height":28},{"id":"O-09","x":1724,"y":1340,"width":15,"height":28},{"id":"O-10","x":1724,"y":1368,"width":15,"height":28},{"id":"O-11","x":1724,"y":1396,"width":15,"height":28},{"id":"O-12","x":1724,"y":1424,"width":15,"height":28},{"id":"O-13","x":1724,"y":1460,"width":28,"height":15},{"id":"O-14","x":1752,"y":1460,"width":28,"height":15},{"id":"O-15","x":1765,"y":1424,"width":15,"height":28},{"id":"O-16","x":1765,"y":1396,"width":15,"height":28},{"id":"O-17","x":1765,"y":1368,"width":15,"height":28},{"id":"O-18","x":1765,"y":1340,"width":15,"height":28},{"id":"O-19","x":1765,"y":1312,"width":15,"height":28},{"id":"O-20","x":1765,"y":1265,"width":15,"height":28},{"id":"O-21","x":1765,"y":1237,"width":15,"height":28},{"id":"O-22","x":1765,"y":1209,"width":15,"height":28},{"id":"O-23","x":1765,"y":1181,"width":15,"height":28},{"id":"O-24","x":1765,"y":1153,"width":15,"height":28},{"id":"N-01","x":1619,"y":1181,"width":15,"height":28},{"id":"N-02","x":1619,"y":1209,"width":15,"height":28},{"id":"N-03","x":1619,"y":1237,"width":15,"height":28},{"id":"N-04","x":1619,"y":1265,"width":15,"height":28},{"id":"N-05","x":1619,"y":1314,"width":15,"height":28},{"id":"N-06","x":1619,"y":1342,"width":15,"height":28},{"id":"N-07","x":1619,"y":1370,"width":15,"height":28},{"id":"N-08","x":1619,"y":1398,"width":15,"height":28},{"id":"N-09","x":1619,"y":1426,"width":15,"height":28},{"id":"N-10","x":1619,"y":1460,"width":28,"height":15},{"id":"N-11","x":1647,"y":1460,"width":28,"height":15},{"id":"N-12","x":1660,"y":1426,"width":15,"height":28},{"id":"N-13","x":1660,"y":1398,"width":15,"height":28},{"id":"N-14","x":1660,"y":1370,"width":15,"height":28},{"id":"N-15","x":1660,"y":1342,"width":15,"height":28},{"id":"N-16","x":1660,"y":1314,"width":15,"height":28},{"id":"N-17","x":1660,"y":1265,"width":15,"height":28},{"id":"N-18","x":1660,"y":1237,"width":15,"height":28},{"id":"N-19","x":1660,"y":1209,"width":15,"height":28},{"id":"N-20","x":1660,"y":1181,"width":15,"height":28},{"id":"A-02","x":244,"y":1187,"width":28,"height":15},{"id":"A-01","x":272,"y":1187,"width":28,"height":15},{"id":"A-03","x":244,"y":1220,"width":15,"height":28},{"id":"A-04","x":244,"y":1248,"width":15,"height":28},{"id":"A-05","x":244,"y":1276,"width":15,"height":28},{"id":"A-06","x":244,"y":1335,"width":15,"height":28},{"id":"A-07","x":244,"y":1363,"width":15,"height":28},{"id":"A-08","x":244,"y":1391,"width":15,"height":28},{"id":"A-09","x":244,"y":1426,"width":28,"height":15},{"id":"A-10","x":272,"y":1426,"width":28,"height":15},{"id":"A-11","x":285,"y":1391,"width":15,"height":28},{"id":"A-12","x":285,"y":1363,"width":15,"height":28},{"id":"A-13","x":285,"y":1335,"width":15,"height":28},{"id":"A-14","x":285,"y":1276,"width":15,"height":28},{"id":"A-15","x":285,"y":1248,"width":15,"height":28},{"id":"A-16","x":285,"y":1220,"width":15,"height":28},{"id":"R-02","x":2044,"y":1180,"width":28,"height":15},{"id":"R-01","x":2072,"y":1180,"width":28,"height":15},{"id":"R-03","x":2041,"y":1207,"width":15,"height":28},{"id":"R-04","x":2041,"y":1235,"width":15,"height":28},{"id":"R-05","x":2041,"y":1263,"width":15,"height":28},{"id":"R-06","x":2041,"y":1312,"width":15,"height":28},{"id":"R-07","x":2041,"y":1340,"width":15,"height":28},{"id":"R-08","x":2041,"y":1368,"width":15,"height":28},{"id":"R-09","x":2044,"y":1408,"width":28,"height":15},{"id":"R-10","x":2072,"y":1408,"width":28,"height":15},{"id":"R-11","x":2087,"y":1367,"width":15,"height":28},{"id":"R-12","x":2087,"y":1339,"width":15,"height":28},{"id":"R-13","x":2087,"y":1311,"width":15,"height":28},{"id":"R-14","x":2087,"y":1263,"width":15,"height":28},{"id":"R-15","x":2087,"y":1235,"width":15,"height":28},{"id":"R-16","x":2087,"y":1207,"width":15,"height":28},{"id":"U-01","x":182.5,"y":1447,"width":15,"height":28},{"id":"U-02","x":182.5,"y":1419,"width":15,"height":28},{"id":"U-03","x":182.5,"y":1391,"width":15,"height":28},{"id":"U-04","x":182.5,"y":1342,"width":15,"height":28},{"id":"U-05","x":182.5,"y":1314,"width":15,"height":28},{"id":"U-06","x":182.5,"y":1286,"width":15,"height":28},{"id":"U-07","x":182.5,"y":1258,"width":15,"height":28},{"id":"U-08","x":182.5,"y":1230,"width":15,"height":28},{"id":"U-09","x":182.5,"y":1188,"width":15,"height":28},{"id":"U-10","x":182.5,"y":1160,"width":15,"height":28},{"id":"U-11","x":182.5,"y":1132,"width":15,"height":28},{"id":"S-01","x":2138,"y":1131,"width":15,"height":28},{"id":"S-02","x":2138,"y":1159,"width":15,"height":28},{"id":"S-03","x":2138,"y":1187,"width":15,"height":28},{"id":"S-04","x":2138,"y":1230,"width":15,"height":28},{"id":"S-05","x":2138,"y":1258,"width":15,"height":28},{"id":"S-06","x":2138,"y":1286,"width":15,"height":28},{"id":"S-07","x":2138,"y":1314,"width":15,"height":28},{"id":"S-08","x":2138,"y":1342,"width":15,"height":28},{"id":"S-09","x":2138,"y":1391,"width":15,"height":28},{"id":"S-10","x":2138,"y":1419,"width":15,"height":28},{"id":"S-11","x":2138,"y":1447,"width":15,"height":28}],"blockLabels":[{"id":"label-か","text":"か","x":250,"y":321,"fontSize":27},{"id":"label-1760443366503","text":"お","x":245,"y":428,"fontSize":27},{"id":"label-1760443400202","text":"え","x":251,"y":540,"fontSize":27},{"id":"label-1760443416869","text":"う","x":269,"y":628,"fontSize":27},{"id":"label-1760443431897","text":"い","x":321,"y":729,"fontSize":27},{"id":"label-1760443445743","text":"あ","x":846,"y":819,"fontSize":27},{"id":"label-1760443472621","text":"シ","x":1864,"y":293,"fontSize":27},{"id":"label-1760443493497","text":"サ","x":1867,"y":396,"fontSize":27},{"id":"label-1760443525702","text":"コ","x":1872,"y":522,"fontSize":27},{"id":"label-1760443662229","text":"ケ","x":1872,"y":604,"fontSize":27},{"id":"label-1760443713827","text":"ク","x":1872,"y":707,"fontSize":27},{"id":"label-1760444018131","text":"キ","x":1969,"y":825,"fontSize":27},{"id":"label-1760444038866","text":"U","x":218,"y":1146,"fontSize":27},{"id":"label-1760444053939","text":"A","x":271,"y":1272,"fontSize":27},{"id":"label-1760444075886","text":"B","x":375,"y":1181,"fontSize":27},{"id":"label-1760444098933","text":"C","x":481,"y":1182,"fontSize":27},{"id":"label-1760444115328","text":"D","x":590,"y":1183,"fontSize":27},{"id":"label-1760444132038","text":"E","x":695,"y":1186,"fontSize":27},{"id":"label-1760444149699","text":"F","x":801,"y":1185,"fontSize":27},{"id":"label-1760444167999","text":"G","x":906,"y":1183,"fontSize":27},{"id":"label-1760444184547","text":"H","x":1011,"y":1183,"fontSize":27},{"id":"label-1760444201131","text":"I","x":1119,"y":1181,"fontSize":27},{"id":"label-1760444219896","text":"J","x":1223,"y":1180,"fontSize":27},{"id":"label-1760444246797","text":"K","x":1331,"y":1177,"fontSize":27},{"id":"label-1760444264898","text":"L","x":1437,"y":1176,"fontSize":27},{"id":"label-1760444278143","text":"M","x":1543,"y":1178,"fontSize":27},{"id":"label-1760444294601","text":"N","x":1646,"y":1246,"fontSize":27},{"id":"label-1760444310732","text":"O","x":1753,"y":1184,"fontSize":27},{"id":"label-1760444330017","text":"P","x":1859,"y":1184,"fontSize":27},{"id":"label-1760444348290","text":"Q","x":1966,"y":1181,"fontSize":27},{"id":"label-1760444363963","text":"R","x":2071,"y":1257,"fontSize":27},{"id":"label-1760444381761","text":"S","x":2168,"y":1159,"fontSize":27},{"id":"label-1760444407736","text":"T","x":306,"y":1524,"fontSize":27},{"id":"label-1760444429698","text":"V","x":287,"y":1093,"fontSize":27},{"id":"label-1760444442756","text":"V","x":2041,"y":1093,"fontSize":27},{"id":"label-1790351443545","text":"T","x":1804,"y":1529,"fontSize":27}]};
+
+// [name, phonetic, area, number, x url] from the M3 web catalog
+const CIRCLES=
+[];
+
+const BASE=[
+ {id:'tsuki',name:'月乃',circle:'Lunatic★Melody',area:'コ',num:'21b',tw:['https://x.com/tsuki_nxo/status/2111411997799846261']},
+ {id:'risa',name:'Risa Yuzuki',circle:'Luminaria',area:'シ',num:'01a',tw:['https://x.com/Yuzurisa15/status/2111404455132635505']},
+ {id:'koyori',name:'乃花こより',circle:'心花学',area:'シ',num:'38b',tw:['https://x.com/nohakoyo_voice/status/2106327147111755791']},
+ {id:'suzumi',name:'すずみしろ',circle:'sumicco',area:'か',num:'29b',tw:['https://x.com/suzumisiro/status/2111412802959380992']},
+ {id:'nayuta',name:'nayuta',circle:'7uta.com',area:'T',num:'15ab',tw:['https://x.com/7utauta/status/2111396814263873706']},
+ {id:'kotono',name:'ことの',circle:'kotonaut',area:'E',num:'19a',tw:['https://x.com/__kt127/status/2111052390489260426']},
+ {id:'motto',name:'MOTTO MUSIC',circle:'MOTTO MUSIC',area:'V',num:'28ab',tw:['https://x.com/mottomusic_/status/2110928617480003649']},
+ {id:'kaza',name:'kaza',circle:'Nika Lenz feat.kaza',area:'え',num:'30a',tw:['https://x.com/kaza_3n/status/2110688451322597649']},
+ {id:'miyo',name:'高城みよ',circle:'高城みよ',area:'サ',num:'10b',tw:['https://x.com/inktrans/status/2110689080195649551','https://x.com/inktrans/status/2110681057452491135']},
+ {id:'tj',name:'T-J',circle:'T-J',area:'P',num:'04b',tw:['https://x.com/TJ_skp61/status/2104909197649576387']},
+ {id:'sennzai',name:'Sennzai',circle:'Seardrop',area:'あ',num:'04a',tw:['https://x.com/sennzai/status/2109962353131626942']},
+ {id:'yuno',name:'咲良ゆの',circle:'Amelia+RESTARiZE',area:'S',num:'04b',tw:['https://x.com/yuno_singer/status/2109287458810818832']},
+ {id:'lanpage',name:'LanPage',circle:'somunia project',area:'コ',num:'21a',tw:['https://x.com/lanpage_sgy/status/2107763268584669236']},
+ {id:'kanata',name:'彼方',circle:'彼方',area:'I',num:'13ab',tw:['https://x.com/kanata_world_/status/2109226792422867241']},
+ {id:'room97',name:'Room97',circle:'Room97',area:'T',num:'18ab',tw:['https://x.com/i_t_room97/status/2105976085079101660']},
+ {id:'ephemeria',name:'Ephemeria',circle:'Aquange - 羽澄愛',area:'U',num:'06ab',tw:['https://x.com/Ephemeria_music/status/2106580066624995643']},
+ {id:'shikibu',name:'式部めぐり',circle:'式部めぐり',area:'シ',num:'34b',tw:['https://x.com/ShikibuMeguri/status/2106371298146603024']},
+ {id:'connemo',name:'CONNEMO',circle:'CONNEMO',area:'A',num:'11a',tw:['https://x.com/ConnemoMusic/status/2108512803397186018']},
+];
+
+const HALLS={
+ H1:{name:'第一展示場',floor:'2F',vb:[140,1005,2066,602]},
+ H2F1:{name:'第二展示場',floor:'1F',vb:[55,234,1074,635]},
+ H2F2:{name:'第二展示場',floor:'2F',vb:[1176,229,1107,632]},
+};
+const HALL_ORDER=['H1','H2F1','H2F2'];
+const hallOf=b=>'あいうえおか'.includes(b)?'H2F1':'キクケコサシ'.includes(b)?'H2F2':'H1';
+const PORTALS={
+ // 開場直後は第一展示場の南側（T列の08と09の間）の入口からのみ入場できる
+ e1:{hall:'H1',x:1551,y:1588,label:'入口'},
+ e2:{hall:'H2F1',x:1100,y:437,label:'入口'},
+ s1:{hall:'H2F1',x:1062,y:568,label:'エスカレーター'},
+ s2:{hall:'H2F2',x:2168,y:440,label:'エスカレーター'},
+};
+// building-to-building walk weighs much more than walking an aisle
+const LINKS=[['e1','e2',2500],['s1','s2',300]];
+const UNIT_M=0.064; // ~1.8 m per space number
+
+const deskMap={}; DATA.desks.forEach(d=>deskMap[d.id]=d);
+function place(s){
+  const d=deskMap[s.area+'-'+s.num.slice(0,2)]; if(!d) return null;
+  return Object.assign(s,{hall:hallOf(s.area),x:d.x+d.width/2,y:d.y+d.height/2,desk:d});
+}
+let STOPS=[];
+function rebuildStops(){
+  STOPS=[...BASE,...st.custom].filter(s=>!st.removed[s.id]).map(place).filter(Boolean);
+}
+
+/* portal graph (Floyd–Warshall on 4 nodes) */
+const man=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
+const PK=Object.keys(PORTALS);
+const D={},NX={};
+PK.forEach(a=>{D[a]={};NX[a]={};PK.forEach(b=>{D[a][b]=a===b?0:(PORTALS[a].hall===PORTALS[b].hall?man(PORTALS[a],PORTALS[b]):Infinity);NX[a][b]=b})});
+LINKS.forEach(([a,b,c])=>{D[a][b]=D[b][a]=c});
+PK.forEach(k=>PK.forEach(i=>PK.forEach(j=>{if(D[i][k]+D[k][j]<D[i][j]){D[i][j]=D[i][k]+D[k][j];NX[i][j]=NX[i][k]}})));
+function best(p,q){
+  let r={c:Infinity};
+  PK.filter(a=>PORTALS[a].hall===p.hall).forEach(a=>PK.filter(b=>PORTALS[b].hall===q.hall).forEach(b=>{
+    const c=man(p,PORTALS[a])+D[a][b]+man(PORTALS[b],q); if(c<r.c) r={c,a,b};
+  }));
+  return r;
+}
+const dist=(p,q)=>p.hall===q.hall?man(p,q):best(p,q).c;
+function legs(p,q){ // [{hall,pts}]
+  if(p.hall===q.hall) return [{hall:p.hall,pts:[p,q]}];
+  const {a,b}=best(p,q); const out=[{hall:p.hall,pts:[p,PORTALS[a]]}];
+  let u=a; while(u!==b){const v=NX[u][b]; if(PORTALS[u].hall===PORTALS[v].hall) out.push({hall:PORTALS[u].hall,pts:[PORTALS[u],PORTALS[v]]}); u=v;}
+  out.push({hall:q.hall,pts:[PORTALS[b],q]}); return out;
+}
+
+/* open-path TSP: nearest neighbour then 2-opt, start fixed */
+function orderFrom(start,items){
+  const rest=items.slice(), path=[start];
+  while(rest.length){const cur=path[path.length-1]; let bi=0; rest.forEach((s,i)=>{if(dist(cur,s)<dist(cur,rest[bi]))bi=i}); path.push(rest.splice(bi,1)[0]);}
+  let improved=true;
+  while(improved){improved=false;
+    for(let i=1;i<path.length-1;i++)for(let k=i+1;k<path.length;k++){
+      const before=dist(path[i-1],path[i])+(k+1<path.length?dist(path[k],path[k+1]):0);
+      const after=dist(path[i-1],path[k])+(k+1<path.length?dist(path[i],path[k+1]):0);
+      if(after<before-0.01){path.splice(i,k-i+1,...path.slice(i,k+1).reverse());improved=true}
+    }}
+  return path.slice(1);
+}
+
+/* state */
+const KEY='m3-2026f-route-my';
+let st={prio:{},done:{},start:'e1',mode:'prio',hall:'H1',zoom:{},custom:[],removed:{}};
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s) st=Object.assign(st,s)}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+const pr=s=>st.prio[s.id]||2;
+const PCOL={1:'var(--p1)',2:'var(--p2)',3:'var(--p3)'};
+const PNAME={1:'最優先',2:'優先',3:'余裕があれば'};
+
+let route=[];
+function compute(){
+  const todo=STOPS.filter(s=>!st.done[s.id]);
+  let cur=PORTALS[st.start]; route=[];
+  const groups=st.mode==='prio'?[1,2,3].map(p=>todo.filter(s=>pr(s)===p)):[todo];
+  groups.forEach(g=>{if(!g.length)return; const o=orderFrom(cur,g); route.push(...o); cur=o[o.length-1];});
+}
+
+/* map */
+const NS='http://www.w3.org/2000/svg';
+const el=(t,a={},txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;return e};
+const svgs={};
+function buildMaps(){
+  HALL_ORDER.forEach(h=>{
+    const [x,y,w,hh]=HALLS[h].vb;
+    const s=el('svg',{viewBox:`${x} ${y} ${w} ${hh}`,role:'img','aria-label':HALLS[h].name+' '+HALLS[h].floor});
+    s.appendChild(el('rect',{class:'m-frame',x:x+6,y:y+6,width:w-12,height:hh-12,rx:6}));
+    const g=el('g');
+    DATA.desks.forEach(d=>{const b=d.id.split('-')[0]; if(hallOf(b)!==h)return;
+      g.appendChild(el('rect',{class:'m-desk',x:d.x,y:d.y,width:d.width,height:d.height}));
+      g.appendChild(el('text',{class:'m-dn',x:d.x+d.width/2,y:d.y+d.height/2+3,'text-anchor':'middle'},String(+d.id.split('-')[1])));
+    });
+    s.appendChild(g);
+    DATA.blockLabels.forEach(l=>{if(hallOf(l.text)!==h)return; s.appendChild(el('text',{class:'m-bl',x:l.x,y:l.y,'text-anchor':'middle','dominant-baseline':'middle'},l.text))});
+    Object.values(PORTALS).forEach(p=>{if(p.hall!==h)return;
+      s.appendChild(el('rect',{class:'m-portal',x:p.x-9,y:p.y-9,width:18,height:18,rx:4}));
+      s.appendChild(el('text',{class:'m-pt',x:p.x-14,y:p.y-14,'text-anchor':'end'},p.label));
+    });
+    s.appendChild(el('g',{class:'layer'}));
+    svgs[h]=s;
+  });
+}
+function drawRoute(){
+  HALL_ORDER.forEach(h=>{const L=svgs[h].querySelector('.layer'); L.replaceChildren();});
+  // start marker
+  const sp=PORTALS[st.start]; const SL=svgs[sp.hall].querySelector('.layer');
+  SL.appendChild(el('circle',{class:'m-start',cx:sp.x,cy:sp.y,r:13}));
+  SL.appendChild(el('text',{class:'m-tn',x:sp.x,y:sp.y+5,'text-anchor':'middle'},'S'));
+  // lines
+  let prev=sp;
+  route.forEach(s=>{legs(prev,s).forEach(l=>{const L=svgs[l.hall].querySelector('.layer');
+    L.appendChild(el('path',{class:'m-route',d:'M'+l.pts.map(p=>p.x+' '+p.y).join(' L ')}))}); prev=s;});
+  // markers
+  STOPS.forEach(s=>{
+    const L=svgs[s.hall].querySelector('.layer'); const i=route.indexOf(s); const done=!!st.done[s.id];
+    const d=s.desk;
+    L.appendChild(el('rect',{class:'m-hl',x:d.x-2,y:d.y-2,width:d.width+4,height:d.height+4,rx:3,style:`stroke:${done?'var(--ok)':PCOL[pr(s)]}`}));
+    const g=el('g',{style:'cursor:pointer'}); g.addEventListener('click',()=>focusStop(s));
+    g.appendChild(el('circle',{class:'m-tgt',cx:s.x,cy:s.y,r:15,style:`fill:${done?'var(--ok)':PCOL[pr(s)]}`}));
+    g.appendChild(el('text',{class:'m-tn',x:s.x,y:s.y+5,'text-anchor':'middle'},done?'✓':String(i+1)));
+    g.appendChild(el('title',{},`${s.name} ${s.area}-${s.num}`));
+    L.appendChild(g);
+  });
+}
+
+const scroller=document.getElementById('mapscroll');
+function zoomOf(h){return st.zoom[h]||(h==='H1'?2.2:1.4)}
+function applyZoom(keepCenter=true){
+  const s=svgs[st.hall]; const W=scroller.clientWidth;
+  const cx=(scroller.scrollLeft+scroller.clientWidth/2)/(s.clientWidth||1), cy=(scroller.scrollTop+scroller.clientHeight/2)/(s.clientHeight||1);
+  const w=W*zoomOf(st.hall); s.style.width=w+'px'; s.style.height=(w*HALLS[st.hall].vb[3]/HALLS[st.hall].vb[2])+'px';
+  if(keepCenter){scroller.scrollLeft=cx*s.clientWidth-scroller.clientWidth/2; scroller.scrollTop=cy*s.clientHeight-scroller.clientHeight/2;}
+}
+function showHall(h,centerOn){
+  st.hall=h; save();
+  scroller.replaceChildren(svgs[h]); applyZoom(false);
+  const target=centerOn||route.find(s=>s.hall===h)||STOPS.find(s=>s.hall===h);
+  if(target) centerAt(target);
+  renderTabs();
+}
+function centerAt(p){
+  const s=svgs[st.hall],[x,y,w,h]=HALLS[st.hall].vb;
+  scroller.scrollLeft=(p.x-x)/w*s.clientWidth-scroller.clientWidth/2;
+  scroller.scrollTop=(p.y-y)/h*s.clientHeight-scroller.clientHeight/2;
+}
+function focusStop(s){
+  if((st.zoom[s.hall]||0)<2.6) st.zoom[s.hall]=Math.max(zoomOf(s.hall),2.6);
+  showHall(s.hall,s);
+  scroller.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+document.getElementById('zin').onclick=()=>{st.zoom[st.hall]=Math.min(zoomOf(st.hall)*1.35,7);applyZoom();save()};
+document.getElementById('zout').onclick=()=>{st.zoom[st.hall]=Math.max(zoomOf(st.hall)/1.35,1);applyZoom();save()};
+
+function renderTabs(){
+  const t=document.getElementById('tabs'); t.replaceChildren();
+  HALL_ORDER.forEach(h=>{
+    const n=STOPS.filter(s=>s.hall===h&&!st.done[s.id]).length, all=STOPS.filter(s=>s.hall===h).length;
+    const b=document.createElement('button'); b.className='tab'; b.setAttribute('role','tab'); b.id='tab-'+h;
+    b.setAttribute('aria-selected',st.hall===h);
+    b.innerHTML=`<b>${HALLS[h].name}</b><span>${HALLS[h].floor}</span><span class="n">残り ${n}/${all}</span>`;
+    b.onclick=()=>showHall(h); t.appendChild(b);
+  });
+}
+function segs(){
+  [['startSeg','start'],['modeSeg','mode']].forEach(([id,k])=>{
+    document.querySelectorAll('#'+id+' button').forEach(b=>{b.setAttribute('aria-pressed',st[k]===b.dataset.v);
+      b.onclick=()=>{st[k]=b.dataset.v;save();refresh()}});
+  });
+}
+const hallName=h=>HALLS[h].name+' '+HALLS[h].floor;
+function stopItem(s,i){
+  const li=document.createElement('li'); li.className='stop'+(st.done[s.id]?' done':'');
+  li.style.setProperty('--pc',PCOL[pr(s)]);
+  const tw=s.tw.map((u,k)=>`<a href="${esc(u)}" target="_blank" rel="noopener">${s.custom?'X':'告知ツイート'}${s.tw.length>1?k+1:''}</a>`).join('');
+  li.innerHTML=`<div class="num">${st.done[s.id]?'✓':i+1}</div>
+  <div class="body">
+    <div class="top"><span class="name" tabindex="0" role="button">${esc(s.name)}</span><span class="booth">${esc(s.area+'-'+s.num)}</span></div>
+    <div class="meta"><span>${hallName(s.hall)}</span><span>サークル「${esc(s.circle)}」</span>${tw}</div>
+    <div class="ctl"><span class="pr">${[1,2,3].map(p=>`<button data-p="${p}" aria-pressed="${pr(s)===p}">${PNAME[p]}</button>`).join('')}</span>
+    <label class="chk"><input type="checkbox" id="done-${s.id}" ${st.done[s.id]?'checked':''}>訪問済み</label>
+    <button class="rm">リストから外す</button></div>
+  </div>`;
+  li.querySelector('.rm').onclick=()=>removeStop(s);
+  const nm=li.querySelector('.name'); nm.onclick=()=>focusStop(s); nm.onkeydown=e=>{if(e.key==='Enter')focusStop(s)};
+  li.querySelectorAll('.pr button').forEach(b=>b.onclick=()=>{st.prio[s.id]=+b.dataset.p;save();refresh()});
+  li.querySelector('input').onchange=e=>{if(e.target.checked)st.done[s.id]=1;else delete st.done[s.id];save();refresh()};
+  return li;
+}
+function renderList(){
+  const ol=document.getElementById('route'); ol.replaceChildren();
+  let prev=PORTALS[st.start], total=0, moves=0;
+  route.forEach((s,i)=>{
+    total+=dist(prev,s);
+    if(prev.hall!==s.hall){moves++; const m=document.createElement('li'); m.className='move';
+      m.textContent=`↓ ${hallName(s.hall)}へ移動`+(HALLS[prev.hall].name!==HALLS[s.hall].name?'（建物を移動）':'（エスカレーター）'); ol.appendChild(m);}
+    ol.appendChild(stopItem(s,i)); prev=s;
+  });
+  if(!route.length){const li=document.createElement('li');li.className='note';li.textContent=STOPS.length?'すべて訪問済みです。':'まだブースがありません。下の「ブースを追加」から回りたいブースを追加してください。';ol.appendChild(li)}
+  const done=STOPS.filter(s=>st.done[s.id]); const dl=document.getElementById('done'); dl.replaceChildren();
+  done.forEach(s=>dl.appendChild(stopItem(s,0)));
+  document.getElementById('doneSec').hidden=!done.length;
+  const walk=Math.round(total*UNIT_M/10)*10;
+  document.getElementById('summary').innerHTML=`<span>残り <b>${route.length}</b> か所</span><span>会場の移動 <b>${moves}</b> 回</span><span>歩行距離の目安 <b>約${walk}</b> m</span>`;
+}
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const boothId=(a,n)=>'c:'+a+'-'+n;
+const inList=(a,n)=>STOPS.some(s=>s.area===a&&s.num===n);
+function removeStop(s){
+  if(s.custom) st.custom=st.custom.filter(c=>c.id!==s.id); else st.removed[s.id]=1;
+  delete st.prio[s.id]; delete st.done[s.id]; save(); refresh();
+}
+function addCircle(c){
+  const [name,,area,num,tw]=c;
+  const base=BASE.find(b=>b.area===area&&b.num===num);
+  if(base){delete st.removed[base.id]}
+  else st.custom.push({id:boothId(area,num),name,circle:name,area,num,tw:tw?[tw]:[],custom:true});
+  save(); refresh(); search();
+}
+const norm=t=>String(t).toLowerCase().replace(/[\s　]/g,'').replace(/[ぁ-ゖ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)+0x60)).replace(/[－—–ー‐]/g,'-');
+function search(){
+  const q=norm(document.getElementById('q').value), ol=document.getElementById('results'); ol.replaceChildren();
+  if(!q) return;
+  const mb=parseBooth(document.getElementById('q').value);
+  if(mb){const li=document.createElement('li'); li.className='res';
+    if(inList(mb.area,mb.num)) li.innerHTML=`<div class="rn"><b>${esc(mb.area+'-'+mb.num)}</b><span>すでにリストにあります</span></div>`;
+    else{li.innerHTML=`<div class="rn" style="flex:1"><b>${esc(mb.area+'-'+mb.num)} ・ ${hallName(hallOf(mb.area))}</b><input id="mname" placeholder="名前（任意）" aria-label="名前" style="margin-top:4px;padding:6px 8px"></div><button class="btn">追加</button>`;
+      li.querySelector('button').onclick=()=>{const n=li.querySelector('input').value.trim()||mb.area+'-'+mb.num; addCircle([n,'',mb.area,mb.num,''])};}
+    ol.appendChild(li);}
+  const hits=CIRCLES.filter(c=>{const [n,p,a,num,tw]=c;
+    return norm(n).includes(q)||norm(p).includes(q)||norm(a+'-'+num).startsWith(q)||(q.length>2&&norm(tw).includes(q.replace(/^@/,'')));
+  }).slice(0,20);
+  if(!hits.length){if(mb)return; const li=document.createElement('li');li.className='note';li.textContent=CIRCLES.length?'見つかりませんでした。サークル名かブース番号（例: コ-21b）で探してください。':'ブース番号（例: コ-21b、T-15ab）を入力すると追加できます。';ol.appendChild(li);return}
+  hits.forEach(c=>{const [n,,a,num,tw]=c; const li=document.createElement('li'); li.className='res'; const has=inList(a,num);
+    li.innerHTML=`<div class="rn"><b>${esc(n)}</b><span>${esc(a+'-'+num)} ・ ${hallName(hallOf(a))}${tw?' ・ '+esc(tw.replace(/^https?:\/\/(x|twitter)\.com\//,'@').replace(/\/$/,'')):''}</span></div><button class="btn" ${has?'disabled':''}>${has?'追加済み':'追加'}</button>`;
+    li.querySelector('button').onclick=()=>addCircle(c); ol.appendChild(li);});
+}
+// "コ-21b" / "t15ab" / "Ｅ－１９ａ" → {area,num} when that desk exists on the map
+function parseBooth(raw){
+  const t=raw.trim().replace(/[Ａ-Ｚａ-ｚ０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  const m=t.match(/^(\S)\s*[-－ー−]?\s*(\d{1,2})\s*(ab|a|b)?$/i); if(!m) return null;
+  const area=/[a-z]/i.test(m[1])?m[1].toUpperCase():m[1], n=m[2].padStart(2,'0');
+  if(!deskMap[area+'-'+n]) return null;
+  return {area,num:n+(m[3]||'').toLowerCase()};
+}
+document.getElementById('q').addEventListener('input',search);
+function renderRemoved(){
+  const r=BASE.filter(b=>st.removed[b.id]), ol=document.getElementById('removed'); ol.replaceChildren();
+  r.forEach(b=>{const li=document.createElement('li'); li.className='res';
+    li.innerHTML=`<div class="rn"><b>${esc(b.name)}</b><span>${esc(b.area+'-'+b.num)}</span></div><button class="btn">戻す</button>`;
+    li.querySelector('button').onclick=()=>{delete st.removed[b.id];save();refresh();search()}; ol.appendChild(li)});
+  document.getElementById('removedSec').hidden=!r.length;
+}
+function refresh(){rebuildStops();compute();segs();drawRoute();renderList();renderTabs();renderRemoved();document.getElementById('count').textContent=STOPS.length}
+document.getElementById('reset').onclick=()=>{st.prio={};st.done={};save();refresh()};
+
+buildMaps(); refresh(); showHall(st.hall);
+addEventListener('resize',()=>applyZoom());
+</script>
+</body>
+</html>

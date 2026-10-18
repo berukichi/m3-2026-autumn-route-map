@@ -685,7 +685,8 @@ function search(){
   }).slice(0,20);
   if(!hits.length){if(mb)return; const li=document.createElement('li');li.className='note';li.textContent=CIRCLES.length?'見つかりませんでした。サークル名かブース番号（例: コ-21b）で探してください。':'ブース番号（例: コ-21b、T-15ab）を入力すると追加できます。';ol.appendChild(li);return}
   hits.forEach(c=>{const [n,,a,num,tw]=c; const li=document.createElement('li'); li.className='res'; const has=inList(a,num);
-    li.innerHTML=`<div class="rn"><b>${esc(n)}</b><span>${esc(a+'-'+num)} ・ ${hallName(hallOf(a))}${tw?' ・ '+esc(tw.replace(/^https?:\/\/(x|twitter)\.com\//,'@').replace(/\/$/,'')):''}</span></div><button class="btn" ${has?'disabled':''}>${has?'追加済み':'追加'}</button>`;
+    const onMap=!!deskMap[a+'-'+num.slice(0,2)]; // e.g. the 藍 area has no desks on the floor map
+    li.innerHTML=`<div class="rn"><b>${esc(n)}</b><span>${esc(a+'-'+num)} ・ ${onMap?hallName(hallOf(a)):'会場マップに場所がありません'}${tw?' ・ '+esc(tw.replace(/^https?:\/\/(x|twitter)\.com\//,'@').replace(/\/$/,'')):''}</span></div><button class="btn" ${has||!onMap?'disabled':''}>${has?'追加済み':onMap?'追加':'追加できません'}</button>`;
     li.querySelector('button').onclick=()=>addCircle(c); ol.appendChild(li);});
 }
 // "コ-21b" / "t15ab" / "Ｅ－１９ａ" / "ク-10x" → {area,num} when that desk exists on the map

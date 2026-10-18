@@ -157,14 +157,14 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
       <div class="seg" id="timeSeg"><button data-v="am">開場直後</button><button data-v="pm">午後</button></div>
     </div>
     <div class="row"><span class="lbl">ルート</span>
-      <div class="seg" id="modeSeg"><button data-v="strict">優先順位どおり</button><button data-v="flex">近くを寄り道</button><button data-v="short">最短距離</button></div>
+      <div class="seg" id="modeSeg"><button data-v="short">最短距離</button><button data-v="flex">近くを寄り道</button><button data-v="strict">優先順位どおり</button></div>
     </div>
     <div class="row" id="topRow"><span class="lbl">後回し</span>
       <label class="chk"><input type="checkbox" id="topFirst">優先順位の上位</label>
       <span class="topn"><input type="number" id="topN" min="1" max="50" inputmode="numeric" aria-label="先に回る順位">位までを先に回る（<span id="topRest">6</span>位以下は後回し）</span>
     </div>
     <div class="summary" id="summary"></div>
-    <div class="note">「優先順位どおり」は順位の通りに回ります。「近くを寄り道」は上位3件の中から近いブースを先に回りますが、どのブースも本来の順位から2つより後ろには下がりません。「最短距離」は距離が最短になる順に回ります。初期設定では優先順位の上位5位までを先に回り、6位以下はそのあとに回ります（「後回し」で変更できます）。第一展示場は入口と出口が別で、第二展示場へは北側の「出口」から出ます。開場直後に第一展示場へ入れるのは南入口だけで、「午後」にすると北入口も使うルートになります。サークル名をタップすると地図上の位置に移動します。</div>
+    <div class="note">「最短距離」は優先順位1位のブースから回り始め、そこから距離が最短になる順に回ります。初期設定では上位5位までを先に回り、6位以下はそのあとに回ります（「後回し」で変更できます）。「近くを寄り道」は上位3件の中から近いブースを先に回りますが、どのブースも本来の順位から2つより後ろには下がりません。「優先順位どおり」は順位の通りに回ります。第一展示場は入口と出口が別で、第二展示場へは北側の「出口」から出ます。開場直後に第一展示場へ入れるのは南入口だけで、「午後」にすると北入口も使うルートになります。サークル名をタップすると地図上の位置に移動します。</div>
   </section>
 
   <section>
@@ -287,7 +287,7 @@ function orderFrom(start,items){
 
 /* state */
 const KEY='m3-2026f-route-blank';
-const DEFAULTS=()=>({order:[],split:true,topFirst:true,topN:5,done:{},start:'e1s',time:'am',mode:'flex',hall:'H1',zoom:{},custom:[],removed:{}});
+const DEFAULTS=()=>({order:[],split:true,topFirst:true,topN:5,done:{},start:'e1s',time:'am',mode:'short',hall:'H1',zoom:{},custom:[],removed:{}});
 const isObj=v=>v&&typeof v==='object'&&!Array.isArray(v);
 // Read and sanity-check the saved state; anything malformed falls back to defaults
 function load(){
@@ -330,13 +330,16 @@ const PCOL={1:'var(--p1)',2:'var(--p2)',3:'var(--p3)'};
 const SLACK=2; // 近くを寄り道: a booth may slip at most this many places behind its rank
 
 let route=[];
-function plan(cur,list){ // list is in ranking order
+function plan(cur,list,anchor=true){ // list is in ranking order
   if(st.mode==='short'){
-    if(!st.topFirst) return orderFrom(cur,list);
+    // 最短距離 starts at the best-ranked booth, then takes the shortest path from there
+    const head=anchor&&list.length?[list[0]]:[];
+    if(head.length){cur=list[0]; list=list.slice(1)}
+    if(!st.topFirst) return head.concat(list.length?orderFrom(cur,list):[]);
     // 後回し: shortest path over the top-ranked booths first, then over the rest
     const hi=list.filter(s=>rankOf(s)<st.topN), lo=list.filter(s=>rankOf(s)>=st.topN);
     const a=hi.length?orderFrom(cur,hi):[];
-    return a.concat(lo.length?orderFrom(a.length?a[a.length-1]:cur,lo):[]);
+    return head.concat(a,lo.length?orderFrom(a.length?a[a.length-1]:cur,lo):[]);
   }
   if(st.mode==='strict') return list.slice();
   const out=[], rest=list.map((s,r)=>({s,r}));
@@ -360,9 +363,8 @@ function compute(){
 function planHall2(cur,g){
   const f1=g.filter(s=>s.hall==='H2F1'), f2=g.filter(s=>s.hall==='H2F2');
   if(!f1.length||!f2.length) return plan(cur,g);
-  const run=floors=>{let c=cur,out=[];floors.forEach(f=>{const o=plan(c,f);out.push(...o);c=o[o.length-1]});return out};
-  const len=o=>o.reduce((a,s,i)=>a+dist(i?o[i-1]:cur,s),0);
-  if(st.mode==='short'){const a=run([f1,f2]),b=run([f2,f1]);return len(a)<=len(b)?a:b}
+  // the second floor continues the shortest path from wherever the first floor ended
+  const run=floors=>{let c=cur,out=[];floors.forEach((f,i)=>{const o=plan(c,f,i===0);out.push(...o);c=o[o.length-1]});return out};
   return g[0].hall==='H2F1'?run([f1,f2]):run([f2,f1]);
 }
 
@@ -565,7 +567,7 @@ function renderRank(focusId){
   document.getElementById('shortWarn').hidden=!(st.mode==='short'&&!st.topFirst);
   document.querySelectorAll('#splitSeg button').forEach(b=>{b.setAttribute('aria-pressed',String(st.split)===(b.dataset.v==='1'?'true':'false'));
     b.onclick=()=>{st.split=b.dataset.v==='1';save();refresh()}});
-  document.getElementById('splitNote').textContent=(st.split?'第一展示場と第二展示場（1F・2F）を別々に並べます。スタート地点の建物を回り終えてから、もう一方へ1回だけ移動します。第二展示場は1階と2階を行き来しないよう、最上位のブースがある階を先に回り切ってからもう一方の階へ移ります（そのため順位どおりにならないことがあります）。':'すべてのブースを1つのリストで並べます。建物の行き来が増えることがあります。')+' ⠿ をドラッグして並べ替え、上ほど優先です（⠿ にフォーカスして ↑↓ キーでも動かせます）。';
+  document.getElementById('splitNote').textContent=(st.split?'第一展示場と第二展示場（1F・2F）を別々に並べます。スタート地点の建物を回り終えてから、もう一方へ1回だけ移動します。第二展示場は1階と2階を行き来しないよう、1位のブースがある階を先に回り切ってからもう一方の階へ移ります（そのため順位どおりにならないことがあります）。':'すべてのブースを1つのリストで並べます。建物の行き来が増えることがあります。')+' ⠿ をドラッグして並べ替え、上ほど優先です（⠿ にフォーカスして ↑↓ キーでも動かせます）。';
   const groups=st.split?['1','2'].map(b=>({title:BLD[b],ids:st.order.filter(id=>bldOf(byId(id))===b)})):[{title:'',ids:st.order}];
   if(st.split&&bldOf(SP())==='2') groups.reverse();
   groups.forEach(g=>{

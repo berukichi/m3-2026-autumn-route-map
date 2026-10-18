@@ -41,6 +41,11 @@ nav.toc a:hover{border-color:var(--accent);color:var(--accent)}
 section{display:flex;flex-direction:column;gap:10px;scroll-margin-top:60px}
 h2{font-size:1.08rem;margin:0;display:flex;align-items:baseline;gap:10px;text-wrap:balance}
 h3{font-size:.95rem;margin:8px 0 0}
+figure.shot{margin:8px 0 4px;display:flex;flex-direction:column;gap:6px;max-width:520px}
+figure.shot img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:#13121d}
+figure.shot figcaption{font-size:.8rem;color:var(--muted)}
+section>figure.shot{max-width:420px}
+.note-s{font-size:.78rem;color:var(--muted)}
 ol ul{margin-top:4px;font-size:.92em}
 h2 .n{font:700 .8rem var(--f-mono);color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:0 8px;flex:none}
 p{margin:0;max-width:65ch}
@@ -122,11 +127,17 @@ a{color:var(--accent)}
           <li>ハイフンは省略できます（コ21b）。数字が1桁なら「T-5」のように入れても「T-05」として扱います。</li>
         </ul>
       </li>
-      <li>正しい番号なら、入力欄の下に「<b>コ-21b ・ 第二展示場 2F</b>」のような候補が出ます。</li>
-      <li>候補の中の<span class="ui">名前（任意）</span>に、サークル名や作家さんの名前を入れます。空のままでも登録でき、その場合はブース番号が名前として表示されます。</li>
+      <li>正しい番号なら、入力欄の下に「<b>コ-21b ・ 第二展示場 2F</b>」のような候補が出ます。会場名も一緒に出るので、番号が合っているかをここで確かめられます。
+        <figure class="shot"><img src="img/add-1-candidate.png" width="1096" height="265" alt="入力欄に「コ-21b」と入力し、その下に「コ-21b ・ 第二展示場 2F」という候補と、空の名前欄、追加ボタンが表示された画面" loading="lazy"><figcaption>「コ-21b」と入力したところ。すぐ下に候補が出ます。</figcaption></figure>
+      </li>
+      <li>候補の中の<span class="ui">名前（任意）</span>に、サークル名や作家さんの名前を入れます。空のままでも登録でき、その場合はブース番号が名前として表示されます。
+        <figure class="shot"><img src="img/add-2-name.png" width="1096" height="265" alt="候補の名前欄に「月乃」と入力した画面" loading="lazy"><figcaption>名前欄に「月乃」と入れたところ。</figcaption></figure>
+      </li>
       <li><span class="ui accent">追加</span>を押すと登録されます。</li>
     </ol>
     <p>登録したブースは、すぐに地図とルートに反映されます。優先順位は<b>その建物のリストの一番下</b>に入るので、必要に応じて「優先順位を並べ替える」で上へ動かしてください。</p>
+    <figure class="shot"><img src="img/add-3-result.png" width="869" height="1372" alt="追加後の画面。第二展示場2Fの地図でコ-21の机に1番の印が付き、エスカレーターから点線が引かれている。下の巡回ルートに「1 月乃 コ-21b 第二展示場 2F」が表示されている" loading="lazy"><figcaption>追加したあと。地図の「コ-21」の机に巡回順の番号が付き、下の巡回ルートにも「月乃 コ-21b」が出ます。</figcaption></figure>
+    <p class="note-s">※ 画面はダーク表示の例です。</p>
 
     <div class="tip"><b>登録のコツ：</b>同じ机（例：コ-21a と コ-21b）のサークルも、a と b でそれぞれ別に登録できます。机1つ分のサークル（ab）は「ab」まで入れておくと、番号が見分けやすくなります。</div>
 

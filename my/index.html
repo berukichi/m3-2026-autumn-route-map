@@ -7,13 +7,14 @@
 <title>M3秋2026 巡回マップ</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23c2346d'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='6.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 46V18l11 15 11-15v28'/%3E%3Cpath d='M38 19h10a6.5 6.5 0 0 1 0 13h-5h5a6.5 6.5 0 0 1 0 13H38'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@600;800&family=M+PLUS+Rounded+1c:wght@800&family=JetBrains+Mono:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
 <style>
 /* Layout: phone-first single column — sticky hall tabs, zoomable map, then the ordered route list */
 :root{
   --bg:#f4f3f9; --surface:#ffffff; --ink:#1d1b33; --muted:#686583; --line:#d8d5e7; --desk:#e6e4f0; --desk-ink:#9a97b3;
   --accent:#c2346d; --p1:#c2346d; --p2:#3b58d4; --p3:#86849e; --ok:#2b8a57; --hall:#3a3757;
-  --f-display:"Dela Gothic One","Zen Kaku Gothic New",system-ui,sans-serif;
+  /* Oxanium has Latin only, so Japanese in the title falls through to M PLUS Rounded 1c */
+  --f-display:"Oxanium","M PLUS Rounded 1c","Zen Kaku Gothic New",system-ui,sans-serif;
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI",system-ui,sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
 }
@@ -30,7 +31,9 @@ body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:0 48px}
 .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 header{padding-top:18px;display:flex;flex-direction:column;gap:2px}
-h1{font-family:var(--f-display);font-weight:400;font-size:1.55rem;line-height:1.2;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-family:var(--f-display);font-weight:800;font-size:1.55rem;line-height:1.2;margin:0;text-wrap:balance;letter-spacing:.02em}
+h1 .lat{font-weight:600;font-size:1.12em;letter-spacing:.05em}
+h1 .jp{font-size:.92em}
 h1 em{font-style:normal;color:var(--accent)}
 .sub{color:var(--muted);font-size:.85rem}
 .tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-block:8px}
@@ -143,7 +146,7 @@ body.locked{overflow:hidden}
 <body>
 <div class="wrap">
   <header>
-    <h1>M3<em>秋</em>2026 巡回マップ</h1>
+    <h1><span class="lat">M3</span><em>秋</em><span class="lat">2026</span> <span class="jp">巡回マップ</span></h1>
     <div class="sub">2026年10月25日(日) 東京流通センター ・ <span id="count">18</span>サークル</div>
   </header>
 

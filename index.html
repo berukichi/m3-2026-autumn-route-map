@@ -51,7 +51,7 @@ h1 em{font-style:normal;color:var(--accent)}
 .mapcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;position:relative}
 .mapscroll{overflow:auto;max-height:62vh;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
 .mapscroll svg{display:block}
-.zoom{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
+.zoom{position:absolute;right:8px;bottom:20px;display:flex;gap:6px}
 .zoom button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 1.1rem var(--f-mono);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .zoom .pin{width:auto;border-radius:19px;padding:0 12px 0 10px;display:flex;align-items:center;gap:4px;font:700 .78rem var(--f-body)}
 .pin svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
@@ -62,7 +62,8 @@ h1 em{font-style:normal;color:var(--accent)}
 .mapdock.pinned{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bg);padding-bottom:8px;box-shadow:0 8px 12px -10px rgba(0,0,0,.35)}
 .mapdock.pinned .tabs{position:static}
 .mapdock.pinned .mapscroll{max-height:48vh}
-.mapdock.pinned .maphint{display:none}
+.mapdock.pinned .maphint{font-size:.7rem;padding:4px 12px;gap:2px 10px}
+.mapview{position:relative}
 .maphint{font-size:.75rem;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px 14px}
 .lg{display:inline-flex;align-items:center;gap:5px}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
@@ -222,8 +223,10 @@ body.locked{overflow:hidden}
   <div class="tabs" role="tablist" id="tabs"></div>
 
   <div class="mapcard">
+    <div class="mapview">
     <div class="mapscroll" id="mapscroll"></div>
     <div class="zoom"><button id="pin" class="pin" aria-pressed="false" title="地図を固定"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/></svg><span>固定</span></button><button id="zout" aria-label="縮小">−</button><button id="zin" aria-label="拡大">＋</button></div>
+    </div>
     <div class="maphint">
       <span class="lg"><span class="dot" style="background:var(--p1)"></span>優先順位 上位</span>
       <span class="lg"><span class="dot" style="background:var(--p2)"></span>中位</span>

@@ -688,10 +688,11 @@ function search(){
     li.innerHTML=`<div class="rn"><b>${esc(n)}</b><span>${esc(a+'-'+num)} ・ ${hallName(hallOf(a))}${tw?' ・ '+esc(tw.replace(/^https?:\/\/(x|twitter)\.com\//,'@').replace(/\/$/,'')):''}</span></div><button class="btn" ${has?'disabled':''}>${has?'追加済み':'追加'}</button>`;
     li.querySelector('button').onclick=()=>addCircle(c); ol.appendChild(li);});
 }
-// "コ-21b" / "t15ab" / "Ｅ－１９ａ" → {area,num} when that desk exists on the map
+// "コ-21b" / "t15ab" / "Ｅ－１９ａ" / "ク-10x" → {area,num} when that desk exists on the map
+// (most desks split into a/b; ク-03〜36 and ケ-03〜07 split into three: x/y/z)
 function parseBooth(raw){
   const t=raw.trim().replace(/[Ａ-Ｚａ-ｚ０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
-  const m=t.match(/^(\S)\s*[-－ー−]?\s*(\d{1,2})\s*(ab|a|b)?$/i); if(!m) return null;
+  const m=t.match(/^(\S)\s*[-－ー−]?\s*(\d{1,2})\s*(ab|a|b|x|y|z)?$/i); if(!m) return null;
   const area=/[a-z]/i.test(m[1])?m[1].toUpperCase():m[1], n=m[2].padStart(2,'0');
   if(!deskMap[area+'-'+n]) return null;
   return {area,num:n+(m[3]||'').toLowerCase()};

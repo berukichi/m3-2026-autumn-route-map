@@ -100,6 +100,11 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
 .rkb b{font-size:.92rem;overflow-wrap:anywhere}
 .rkb span{font-size:.74rem;color:var(--muted)}
 .badge{font-size:.72rem;font-weight:700;color:var(--pc);border:1px solid currentColor;border-radius:999px;padding:0 7px}
+#rank{display:flex;flex-direction:column;gap:12px}
+.rank-h{font-size:.85rem;font-weight:700;margin:0;display:flex;justify-content:space-between;align-items:baseline}
+.rank-h span{font:500 .75rem var(--f-mono);color:var(--muted)}
+.warn{font-size:.8rem;border:1px solid var(--accent);border-radius:10px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);font-size:.82rem;padding:9px 14px;border-radius:10px;max-width:calc(100% - 32px);z-index:20;box-shadow:0 4px 14px rgba(0,0,0,.3)}
 .foot{display:flex;flex-direction:column;gap:2px;font-size:.72rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
 .foot span:first-child{font-family:var(--f-mono);color:var(--ink)}
 .reset{appearance:none;background:none;border:0;color:var(--muted);font:inherit;font-size:.78rem;text-decoration:underline;cursor:pointer;padding:0}
@@ -161,8 +166,12 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
   </section>
   <section class="panel">
     <h2>優先順位</h2>
-    <p class="note" style="margin:0">⠿ をドラッグして並べ替えます。上ほど優先です。⠿ にフォーカスして ↑↓ キーでも動かせます。</p>
-    <ol class="rank" id="rank"></ol>
+    <div class="row"><span class="lbl">並べ方</span>
+      <div class="seg" id="splitSeg"><button data-v="1">建物ごと</button><button data-v="0">まとめて</button></div>
+    </div>
+    <p class="note" style="margin:0" id="splitNote"></p>
+    <div class="warn" id="shortWarn" hidden>いまのルートは「最短距離」なので、優先順位はルートに反映されません。<button class="btn" id="toFlex">「近くを寄り道」に切り替える</button></div>
+    <div id="rank"></div>
   </section>
   <section class="panel addbox">
     <h2>ブースを追加</h2>
@@ -184,6 +193,7 @@ ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;ga
     <span>配置データ: M3 Webカタログ（catalog.m3net.jp/2026f）の会場マップより。距離は机の座標から求めた目安です。非公式のファンメイドツールです。</span>
   </footer>
 </div>
+<div class="toast" id="toast" role="status" hidden></div>
 
 <script>
 const DATA=
@@ -288,7 +298,7 @@ function orderFrom(start,items){
 
 /* state */
 const KEY='m3-2026f-route-my';
-const DEFAULTS=()=>({order:[],done:{},start:'e1s',time:'am',mode:'flex',hall:'H1',zoom:{},custom:[],removed:{}});
+const DEFAULTS=()=>({order:[],split:true,done:{},start:'e1s',time:'am',mode:'flex',hall:'H1',zoom:{},custom:[],removed:{}});
 const isObj=v=>v&&typeof v==='object'&&!Array.isArray(v);
 // Read and sanity-check the saved state; anything malformed falls back to defaults
 function load(){
@@ -301,6 +311,7 @@ function load(){
   if(s.start in PORTALS&&PORTALS[s.start].in) st.start=s.start;
   if(s.time==='pm') st.time='pm';
   if(['strict','flex','short'].includes(s.mode)) st.mode=s.mode;
+  if(typeof s.split==='boolean') st.split=s.split;
   if(s.hall in HALLS) st.hall=s.hall;
   // earlier version stored 3 priority tiers; turn them into a ranking once
   if(!st.order.length&&isObj(s.prio)) st.order=[...BASE,...st.custom].map((b,i)=>[b.id,(s.prio[b.id]||2)*100+i]).sort((a,b)=>a[1]-b[1]).map(a=>a[0]);
@@ -317,23 +328,35 @@ function syncOrder(){
   st.order=st.order.filter(id=>ids.has(id));
   STOPS.forEach(s=>{if(!st.order.includes(s.id))st.order.push(s.id)});
 }
-const rankOf=s=>st.order.indexOf(s.id);
-function tier(s){const n=STOPS.length,r=rankOf(s); return r<Math.ceil(n/3)?1:r<Math.ceil(n*2/3)?2:3}
+// 建物ごと: 第一展示場 and 第二展示場 (1F+2F together) are ranked separately
+const bldOf=s=>s.hall==='H1'?'1':'2';
+const BLD={1:'第一展示場',2:'第二展示場（1F・2F）'};
+const byId=id=>STOPS.find(s=>s.id===id);
+const groupIds=s=>st.split?st.order.filter(id=>bldOf(byId(id))===bldOf(s)):st.order;
+const rankOf=s=>groupIds(s).indexOf(s.id);
+function tier(s){const n=groupIds(s).length,r=rankOf(s); return r<Math.ceil(n/3)?1:r<Math.ceil(n*2/3)?2:3}
 const PCOL={1:'var(--p1)',2:'var(--p2)',3:'var(--p3)'};
 const SLACK=2; // 近くを寄り道: a booth may slip at most this many places behind its rank
 
 let route=[];
-function compute(){
-  const todo=STOPS.filter(s=>!st.done[s.id]).sort((a,b)=>rankOf(a)-rankOf(b));
-  const start=SP();
-  if(st.mode==='short'){route=orderFrom(start,todo);return}
-  if(st.mode==='strict'){route=todo;return}
-  route=[]; let cur=start; const rest=todo.map((s,r)=>({s,r}));
+function plan(cur,list){ // list is in ranking order
+  if(st.mode==='short') return orderFrom(cur,list);
+  if(st.mode==='strict') return list.slice();
+  const out=[], rest=list.map((s,r)=>({s,r}));
   for(let t=0;rest.length;t++){
     let pick=rest.find(o=>o.r+SLACK<=t);
     if(!pick) rest.filter(o=>o.r<=t+SLACK).forEach(o=>{if(!pick||dist(cur,o.s)<dist(cur,pick.s))pick=o});
-    rest.splice(rest.indexOf(pick),1); route.push(pick.s); cur=pick.s;
+    rest.splice(rest.indexOf(pick),1); out.push(pick.s); cur=pick.s;
   }
+  return out;
+}
+function compute(){
+  const todo=STOPS.filter(s=>!st.done[s.id]).sort((a,b)=>st.order.indexOf(a.id)-st.order.indexOf(b.id));
+  // 建物ごと: finish the building you start in, then cross over once
+  const first=bldOf(SP());
+  const groups=st.split?[todo.filter(s=>bldOf(s)===first),todo.filter(s=>bldOf(s)!==first)]:[todo];
+  route=[]; let cur=SP();
+  groups.forEach(g=>{if(!g.length)return; const o=plan(cur,g); route.push(...o); cur=o[o.length-1]});
 }
 
 /* map */
@@ -513,9 +536,30 @@ function renderRemoved(){
   document.getElementById('removedSec').hidden=!r.length;
 }
 /* ranking list with drag (pointer) and keyboard reordering */
+let toastT=0;
+function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600)}
+function reordered(){
+  if(st.mode==='short') toast('並べ替えました。いまは「最短距離」なので、ルートは変わりません');
+  else toast(route.length?`巡回ルートを更新しました（最初は ${route[0].name}）`:'並べ替えました');
+}
+// write a reordered group (one building, or everything) back into the global order
+function applyGroupOrder(ids){
+  const set=new Set(ids); let k=0;
+  st.order=st.order.map(id=>set.has(id)?ids[k++]:id);
+}
 function renderRank(focusId){
-  const ol=document.getElementById('rank'); ol.replaceChildren();
-  st.order.map(id=>STOPS.find(s=>s.id===id)).forEach((s,r)=>{
+  const box=document.getElementById('rank'); box.replaceChildren();
+  document.getElementById('shortWarn').hidden=st.mode!=='short';
+  document.querySelectorAll('#splitSeg button').forEach(b=>{b.setAttribute('aria-pressed',String(st.split)===(b.dataset.v==='1'?'true':'false'));
+    b.onclick=()=>{st.split=b.dataset.v==='1';save();refresh()}});
+  document.getElementById('splitNote').textContent=(st.split?'第一展示場と第二展示場（1F・2F）を別々に並べます。スタート地点の建物を回り終えてから、もう一方へ1回だけ移動します。':'すべてのブースを1つのリストで並べます。建物の行き来が増えることがあります。')+' ⠿ をドラッグして並べ替え、上ほど優先です（⠿ にフォーカスして ↑↓ キーでも動かせます）。';
+  const groups=st.split?['1','2'].map(b=>({title:BLD[b],ids:st.order.filter(id=>bldOf(byId(id))===b)})):[{title:'',ids:st.order}];
+  if(st.split&&bldOf(SP())==='2') groups.reverse();
+  groups.forEach(g=>{
+    if(st.split){const h=document.createElement('h3'); h.className='rank-h'; h.innerHTML=`${g.title}<span>${g.ids.length}件</span>`; box.appendChild(h)}
+    const ol=document.createElement('ol'); ol.className='rank'; box.appendChild(ol);
+    if(!g.ids.length){const li=document.createElement('li'); li.className='note'; li.textContent='ブースがありません'; ol.appendChild(li)}
+  g.ids.map(byId).forEach((s,r)=>{
     const li=document.createElement('li'); li.className='rk'+(st.done[s.id]?' done':''); li.dataset.id=s.id;
     li.style.setProperty('--pc',PCOL[tier(s)]);
     li.innerHTML=`<button class="handle" aria-label="${esc(s.name)}を並べ替え（↑↓キー）">⠿</button><span class="rkn">${r+1}</span>
@@ -524,13 +568,15 @@ function renderRank(focusId){
     li.querySelector('.rm').onclick=()=>removeStop(s);
     const h=li.querySelector('.handle');
     h.onkeydown=e=>{const d=e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0; if(!d)return; e.preventDefault();
-      const i=st.order.indexOf(s.id),j=i+d; if(j<0||j>=st.order.length)return;
-      [st.order[i],st.order[j]]=[st.order[j],st.order[i]]; save(); refresh(s.id);};
+      const ids=g.ids.slice(), i=ids.indexOf(s.id), j=i+d; if(j<0||j>=ids.length)return;
+      [ids[i],ids[j]]=[ids[j],ids[i]]; applyGroupOrder(ids); save(); refresh(s.id); reordered();};
     h.addEventListener('pointerdown',e=>startDrag(e,li,h));
     ol.appendChild(li);
   });
-  if(focusId){const h=ol.querySelector(`li[data-id="${CSS.escape(focusId)}"] .handle`); if(h)h.focus()}
+  });
+  if(focusId){const h=box.querySelector(`li[data-id="${CSS.escape(focusId)}"] .handle`); if(h)h.focus()}
 }
+document.getElementById('toFlex').onclick=()=>{st.mode='flex';save();refresh();toast('ルートを「近くを寄り道」に切り替えました')};
 function startDrag(e,li,h){
   if(e.button>0) return; e.preventDefault();
   const ol=li.parentNode; let startY=e.clientY+scrollY;
@@ -552,8 +598,9 @@ function startDrag(e,li,h){
   const end=()=>{
     removeEventListener('pointermove',move); removeEventListener('pointerup',end); removeEventListener('pointercancel',end);
     li.classList.remove('dragging'); li.style.transform='';
-    const ids=[...ol.children].map(x=>x.dataset.id);
-    if(ids.join()!==st.order.join()){st.order=ids; save(); refresh()}
+    const ids=[...ol.children].map(x=>x.dataset.id), before=st.order.join();
+    applyGroupOrder(ids);
+    if(st.order.join()!==before){save(); refresh(); reordered()}
   };
   addEventListener('pointermove',move); addEventListener('pointerup',end); addEventListener('pointercancel',end);
 }

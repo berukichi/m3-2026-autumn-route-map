@@ -533,26 +533,29 @@ function renderRank(focusId){
 }
 function startDrag(e,li,h){
   if(e.button>0) return; e.preventDefault();
-  const ol=li.parentNode; let startY=e.clientY, raf=0, lastY=e.clientY;
-  h.setPointerCapture(e.pointerId); li.classList.add('dragging');
-  const place=()=>{li.style.transform=`translateY(${lastY-startY}px)`};
+  const ol=li.parentNode; let startY=e.clientY+scrollY;
+  try{h.setPointerCapture(e.pointerId)}catch(_){}
+  li.classList.add('dragging');
+  // the row follows the pointer; it swaps with a neighbour once the pointer passes that neighbour's middle
   const move=ev=>{
-    lastY=ev.clientY;
-    const r=li.getBoundingClientRect(), mid=r.top+r.height/2;
-    const prev=li.previousElementSibling, next=li.nextElementSibling;
-    const swap=(sib,after)=>{const top0=li.offsetTop; after?sib.after(li):sib.before(li); startY+=li.offsetTop-top0};
-    if(next&&mid>next.getBoundingClientRect().top+next.offsetHeight/2) swap(next,true);
-    else if(prev&&mid<prev.getBoundingClientRect().top+prev.offsetHeight/2) swap(prev,false);
+    const midOf=x=>{const r=x.getBoundingClientRect(); return r.top+r.height/2};
+    for(;;){
+      const next=li.nextElementSibling, prev=li.previousElementSibling, top0=li.offsetTop;
+      if(next&&ev.clientY>midOf(next)) next.after(li);
+      else if(prev&&ev.clientY<midOf(prev)) prev.before(li);
+      else break;
+      startY+=li.offsetTop-top0;
+    }
+    li.style.transform=`translateY(${ev.clientY+scrollY-startY}px)`;
     if(ev.clientY<70) scrollBy(0,-12); else if(ev.clientY>innerHeight-70) scrollBy(0,12);
-    cancelAnimationFrame(raf); raf=requestAnimationFrame(place);
   };
   const end=()=>{
-    h.removeEventListener('pointermove',move); h.removeEventListener('pointerup',end); h.removeEventListener('pointercancel',end);
-    cancelAnimationFrame(raf); li.classList.remove('dragging'); li.style.transform='';
+    removeEventListener('pointermove',move); removeEventListener('pointerup',end); removeEventListener('pointercancel',end);
+    li.classList.remove('dragging'); li.style.transform='';
     const ids=[...ol.children].map(x=>x.dataset.id);
     if(ids.join()!==st.order.join()){st.order=ids; save(); refresh()}
   };
-  h.addEventListener('pointermove',move); h.addEventListener('pointerup',end); h.addEventListener('pointercancel',end);
+  addEventListener('pointermove',move); addEventListener('pointerup',end); addEventListener('pointercancel',end);
 }
 function refresh(focusId){rebuildStops();syncOrder();segs();computeD();compute();drawRoute();renderList();renderRank(focusId);renderTabs();renderRemoved();document.getElementById('count').textContent=STOPS.length}
 document.getElementById('reset').onclick=()=>{st.done={};save();refresh()};

@@ -49,6 +49,16 @@ h1 em{font-style:normal;color:var(--accent)}
 .mapscroll svg{display:block}
 .zoom{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
 .zoom button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 1.1rem var(--f-mono);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.zoom .pin{width:auto;border-radius:19px;padding:0 12px 0 10px;display:flex;align-items:center;gap:4px;font:700 .78rem var(--f-body)}
+.pin svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.zoom .pin[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.zoom .pin[aria-pressed="true"] svg{fill:currentColor}
+/* 地図を固定: the tabs and map stay on screen while the list scrolls underneath */
+.mapdock{display:flex;flex-direction:column;gap:0}
+.mapdock.pinned{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bg);padding-bottom:8px;box-shadow:0 8px 12px -10px rgba(0,0,0,.35)}
+.mapdock.pinned .tabs{position:static}
+.mapdock.pinned .mapscroll{max-height:34vh}
+.mapdock.pinned .maphint{display:none}
 .maphint{font-size:.75rem;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px 14px}
 .lg{display:inline-flex;align-items:center;gap:5px}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
@@ -155,11 +165,12 @@ body.locked{overflow:hidden}
     <button class="theme" id="themeBtn" aria-label="表示モードを切り替え"></button>
   </header>
 
+  <div class="mapdock" id="mapdock">
   <div class="tabs" role="tablist" id="tabs"></div>
 
   <div class="mapcard">
     <div class="mapscroll" id="mapscroll"></div>
-    <div class="zoom"><button id="zout" aria-label="縮小">−</button><button id="zin" aria-label="拡大">＋</button></div>
+    <div class="zoom"><button id="pin" class="pin" aria-pressed="false" title="地図を固定"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/></svg><span>固定</span></button><button id="zout" aria-label="縮小">−</button><button id="zin" aria-label="拡大">＋</button></div>
     <div class="maphint">
       <span class="lg"><span class="dot" style="background:var(--p1)"></span>優先順位 上位</span>
       <span class="lg"><span class="dot" style="background:var(--p2)"></span>中位</span>
@@ -167,6 +178,7 @@ body.locked{overflow:hidden}
       <span class="lg"><span class="dot" style="background:var(--ok)"></span>入口・エスカレーター／訪問済み</span>
       <span class="lg"><span class="dot" style="background:var(--muted)"></span>出口</span>
     </div>
+  </div>
   </div>
 
   <section class="panel">
@@ -315,7 +327,7 @@ function orderFrom(start,items){
 
 /* state */
 const KEY='m3-2026f-route-blank';
-const DEFAULTS=()=>({order:[],split:true,topFirst:true,topN:5,done:{},start:'e1s',time:'am',mode:'short',hall:'H1',zoom:{},custom:[],removed:{}});
+const DEFAULTS=()=>({order:[],split:true,pin:true,topFirst:true,topN:5,done:{},start:'e1s',time:'am',mode:'short',hall:'H1',zoom:{},custom:[],removed:{}});
 const isObj=v=>v&&typeof v==='object'&&!Array.isArray(v);
 // Read and sanity-check the saved state; anything malformed falls back to defaults
 function load(){
@@ -329,6 +341,7 @@ function load(){
   if(s.time==='pm') st.time='pm';
   if(['strict','flex','short'].includes(s.mode)) st.mode=s.mode;
   if(typeof s.split==='boolean') st.split=s.split;
+  if(typeof s.pin==='boolean') st.pin=s.pin;
   if(typeof s.topFirst==='boolean') st.topFirst=s.topFirst;
   if(Number.isInteger(s.topN)&&s.topN>=1&&s.topN<=50) st.topN=s.topN;
   if(s.hall in HALLS) st.hall=s.hall;
@@ -339,7 +352,7 @@ function load(){
 let st=load();
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
 // another tab of this page saved newer data: adopt it instead of overwriting it later
-addEventListener('storage',e=>{if(e.key===KEY){st=load();refresh();showHall(st.hall)}});
+addEventListener('storage',e=>{if(e.key===KEY){st=load();refresh();showHall(st.hall);applyPin()}});
 
 /* ranking */
 function syncOrder(){
@@ -470,8 +483,16 @@ function centerAt(p){
 function focusStop(s){
   if((st.zoom[s.hall]||0)<2.6) st.zoom[s.hall]=Math.max(zoomOf(s.hall),2.6);
   showHall(s.hall,s);
-  scroller.scrollIntoView({behavior:'smooth',block:'nearest'});
+  if(!st.pin) scroller.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+const pinBtn=document.getElementById('pin');
+function applyPin(){
+  document.getElementById('mapdock').classList.toggle('pinned',st.pin);
+  pinBtn.setAttribute('aria-pressed',st.pin);
+  pinBtn.title=st.pin?'地図の固定を解除':'地図を固定'; pinBtn.setAttribute('aria-label',pinBtn.title);
+  applyZoom();
+}
+pinBtn.onclick=()=>{st.pin=!st.pin;save();applyPin()};
 document.getElementById('zin').onclick=()=>{st.zoom[st.hall]=Math.min(zoomOf(st.hall)*1.35,7);applyZoom();save()};
 document.getElementById('zout').onclick=()=>{st.zoom[st.hall]=Math.max(zoomOf(st.hall)/1.35,1);applyZoom();save()};
 
@@ -683,7 +704,7 @@ themeBtn.onclick=()=>{const t=isDark()?'light':'dark'; root.dataset.theme=t; try
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',paintThemeBtn);
 paintThemeBtn();
 
-buildMaps(); refresh(); showHall(st.hall);
+buildMaps(); refresh(); showHall(st.hall); applyPin();
 if(location.hash==='#rank') openRank();
 addEventListener('resize',()=>applyZoom());
 </script>

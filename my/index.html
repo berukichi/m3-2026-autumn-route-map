@@ -31,6 +31,12 @@ body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:0 48px}
 .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 header{padding-top:18px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+header{position:relative}
+.colorpop{position:absolute;right:0;top:calc(100% + 6px);z-index:12;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:calc(100vw - 32px);flex-wrap:wrap}
+.cp-l{font-size:.78rem;font-weight:700;color:var(--muted);letter-spacing:.06em}
+.cp-sw{display:flex;flex-wrap:wrap;gap:8px}
+.sw-btn{appearance:none;width:30px;height:30px;border-radius:50%;border:2px solid var(--line);padding:0;cursor:pointer;background:var(--c);box-shadow:inset 0 0 0 2px var(--surface)}
+.sw-btn[aria-pressed="true"]{border-color:var(--ink);transform:scale(1.08)}
 .hd{min-width:0;display:flex;flex-direction:column;gap:2px}
 .theme{appearance:none;flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:grid;place-items:center}
 .hdbtns{display:flex;gap:8px;flex:none}
@@ -217,6 +223,7 @@ body.locked{overflow:hidden}
 .m-start{fill:var(--ink)}
 @media (prefers-reduced-motion:no-preference){.m-route{animation:dash 1.4s linear infinite}@keyframes dash{to{stroke-dashoffset:-34}}.m-pulse{animation:pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}@keyframes pulse{0%{opacity:1;transform:scale(.8)}100%{opacity:0;transform:scale(1.8)}}}
 </style>
+<script src="../theme.js"></script>
 
 </head>
 <body>
@@ -228,8 +235,10 @@ body.locked{overflow:hidden}
     </div>
     <div class="hdbtns">
       <a class="theme" href="../help.html" aria-label="使い方（マニュアル）" title="使い方（マニュアル）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 12h5"/></svg></a>
+      <button class="theme" id="colorBtn" aria-label="テーマ（配色）を選ぶ" title="テーマ（配色）を選ぶ" aria-expanded="false" aria-controls="colorPop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.9 2-2 0-.6-.3-1-.6-1.4-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.2-4-7.5-9-7.5z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7" r="1.2"/><circle cx="14.5" cy="7" r="1.2"/></svg></button>
       <button class="theme" id="themeBtn" aria-label="表示モードを切り替え"></button>
     </div>
+    <div class="colorpop" id="colorPop" hidden role="dialog" aria-label="テーマ"><span class="cp-l">テーマ</span><div class="cp-sw" id="colorSwatches"></div></div>
   </header>
 
   <div class="mapdock" id="mapdock">
@@ -988,9 +997,32 @@ const MOON='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 
 const isDark=()=>root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
 function paintThemeBtn(){const d=isDark(); themeBtn.innerHTML=d?SUN:MOON; themeBtn.setAttribute('aria-label',d?'ライトモードに切り替え':'ダークモードに切り替え'); themeBtn.title=themeBtn.getAttribute('aria-label')}
 try{const t=localStorage.getItem(THEME_KEY); if(t==='light'||t==='dark') root.dataset.theme=t}catch(e){}
-themeBtn.onclick=()=>{const t=isDark()?'light':'dark'; root.dataset.theme=t; try{localStorage.setItem(THEME_KEY,t)}catch(e){} paintThemeBtn()};
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change',paintThemeBtn);
+themeBtn.onclick=()=>{const t=isDark()?'light':'dark'; root.dataset.theme=t; try{localStorage.setItem(THEME_KEY,t)}catch(e){} paintThemeBtn(); renderSwatches()};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{paintThemeBtn();renderSwatches()});
 paintThemeBtn();
+
+/* color themes (theme.js): swatches show each theme's accent pair, split diagonally */
+const colorBtn=document.getElementById('colorBtn'), colorPop=document.getElementById('colorPop');
+function renderSwatches(){
+  const box=document.getElementById('colorSwatches'); if(!window.M3Theme){colorBtn.hidden=true;return}
+  box.replaceChildren(); const i=isDark()?1:0, cur=M3Theme.current();
+  M3Theme.themes.forEach(t=>{
+    const b=document.createElement('button'); b.className='sw-btn'; b.title=b.ariaLabel=t.name; b.setAttribute('aria-label',t.name);
+    b.style.setProperty('--c',`linear-gradient(135deg,${t.a[i]} 50%,${t.b[i]} 50%)`);
+    b.setAttribute('aria-pressed',t.id===cur);
+    b.onclick=()=>{M3Theme.set(t.id); renderSwatches(); toast(`テーマ「${t.name}」にしました`)};
+    box.appendChild(b);
+  });
+}
+function toggleColorPop(open){
+  colorPop.hidden=!open; colorBtn.setAttribute('aria-expanded',open);
+  if(open){renderSwatches(); colorPop.querySelector('[aria-pressed="true"]')?.focus()}
+}
+colorBtn.onclick=e=>{e.stopPropagation(); toggleColorPop(colorPop.hidden)};
+document.addEventListener('click',e=>{if(!colorPop.hidden&&!colorPop.contains(e.target)) toggleColorPop(false)});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!colorPop.hidden){toggleColorPop(false);colorBtn.focus()}});
+addEventListener('storage',e=>{if(e.key==='m3-2026f-route-color') renderSwatches()});
+renderSwatches();
 
 buildMaps(); refresh(); showHall(st.hall); applyPin(); importFromHash();
 if(location.hash==='#rank') openRank();

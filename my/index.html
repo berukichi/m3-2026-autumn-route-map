@@ -96,6 +96,11 @@ ol.route{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;g
 .pr button[data-p="2"][aria-pressed="true"]{background:var(--p2)}
 .pr button[data-p="3"][aria-pressed="true"]{background:var(--p3)}
 .chk{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;cursor:pointer;padding:3px 8px;border:1px solid var(--line);border-radius:8px}
+.passbtn{appearance:none;font:inherit;font-size:.78rem;padding:3px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);cursor:pointer}
+.passbtn[aria-pressed="true"]{border-color:var(--p3);color:var(--muted)}
+.stop.passed{border-style:dashed}
+.stop.passed .num{background:var(--p3)}
+.move.passsep{color:var(--muted)}
 .chk input{accent-color:var(--ok);margin:0}
 .move{font-size:.8rem;color:var(--accent);font-weight:700;padding:2px 4px 2px 44px;display:flex;align-items:center;gap:6px}
 h2{font-size:.78rem;letter-spacing:.1em;color:var(--muted);margin:10px 0 0;font-weight:700}
@@ -200,9 +205,17 @@ body.locked{overflow:hidden}
 .m-portal.m-exit,.m-pt.m-exit{fill:var(--muted)}
 .m-tgt{stroke:var(--surface);stroke-width:2.5}
 .m-tn{fill:#fff;font:700 15px var(--f-mono)}
+.m-tn-s{font-size:11px}
+.m-lead{stroke:var(--muted);stroke-width:1.5}
+.m-queue{fill:var(--raise);stroke:var(--p2);stroke-width:3;stroke-dasharray:10 6}
+.m-qt{fill:var(--p2);font:700 26px var(--f-body);letter-spacing:.1em}
+.m-qpath{fill:none;stroke:var(--p2);stroke-width:3;stroke-dasharray:8 6}
+.m-pulse{fill:none;stroke:var(--accent);stroke-width:4}
+.m-call{fill:var(--ink)}
+.m-callt{fill:var(--bg);font:700 16px var(--f-body)}
 .m-hl{fill:none;stroke:var(--accent);stroke-width:4}
 .m-start{fill:var(--ink)}
-@media (prefers-reduced-motion:no-preference){.m-route{animation:dash 1.4s linear infinite}@keyframes dash{to{stroke-dashoffset:-34}}}
+@media (prefers-reduced-motion:no-preference){.m-route{animation:dash 1.4s linear infinite}@keyframes dash{to{stroke-dashoffset:-34}}.m-pulse{animation:pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}@keyframes pulse{0%{opacity:1;transform:scale(.8)}100%{opacity:0;transform:scale(1.8)}}}
 </style>
 
 </head>
@@ -247,7 +260,7 @@ body.locked{overflow:hidden}
       <div class="moreBody">
         <div class="field"><span>スタート</span><div class="chips" id="startSeg"><button class="chip" data-v="e1s">第一 南入口</button><button class="chip" data-v="e1n">第一 北入口</button><button class="chip" data-v="e2">第二 1F入口</button></div></div>
         <div class="field"><span>時間帯</span><div class="chips" id="timeSeg"><button class="chip" data-v="am">開場直後</button><button class="chip" data-v="pm">午後</button></div></div>
-        <p class="note" style="margin:0">第一展示場と第二展示場1Fは入口と出口が別です。開場直後に第一展示場へ入れるのは南入口だけで、「午後」にすると北入口も使うルートになります。</p>
+        <p class="note" style="margin:0">第一展示場と第二展示場1Fは入口と出口が別です。開場直後は、第一展示場は南入口、第二展示場は西側の待機列に並んでから南西の入口へ入ります。「午後」にすると、第一展示場の北入口と第二展示場の東側の入口を使うルートになります。</p>
       </div>
     </details>
     <div class="summary" id="summary"></div>
@@ -275,7 +288,7 @@ body.locked{overflow:hidden}
     <p class="note" style="margin:0">PCで作ったリストをスマホで見るときなどに。ブース・優先順位・訪問済み・ルート設定を、そのままほかの端末へ写せます。</p>
     <div class="sharebtns"><button class="btn" id="shareOut">この端末のデータを送る</button><button class="btn ghost" id="shareIn">コードで受け取る</button></div>
   </section>
-  <button class="reset" id="reset">訪問済みをリセット</button>
+  <button class="reset" id="reset">訪問済み・パスをリセット</button>
   <p class="note">データはこの端末のブラウザ内（localStorage）だけに保存され、サーバーには送られません。ほかの人の端末とデータが混ざることはありません。共有は、送る側が作ったQRコード・URL・コードを受け取る側で読み込む方式で、その時点の内容を写すものです（自動では同期しません）。</p>
   <a class="helplink" href="../help.html">使い方（マニュアル）を読む ›</a>
   <footer class="foot">
@@ -289,7 +302,7 @@ body.locked{overflow:hidden}
     <div class="sheet-head"><h2 id="rankTitle">優先順位</h2><button class="btn" id="rankClose">閉じる</button></div>
     <div class="sheet-body" id="sheetBody">
       <div class="row"><span class="lbl">並べ方</span>
-        <div class="seg" id="splitSeg"><button data-v="1">建物ごと</button><button data-v="0">まとめて</button></div>
+        <div class="seg" id="splitSeg"><button data-v="1">フロアごと</button><button data-v="0">まとめて</button></div>
       </div>
       <p class="note" style="margin:0" id="splitNote"></p>
       <div class="warn" id="shortWarn" hidden>いまのルートは「最短距離」で「後回し」がオフなので、1位以外の順位はルートに反映されません。<button class="btn" id="toFlex">「近くを寄り道」に切り替える</button></div>
@@ -359,7 +372,8 @@ const BASE=[
 
 const HALLS={
  H1:{name:'第一展示場',floor:'2F',vb:[140,1005,2066,602]},
- H2F1:{name:'第二展示場',floor:'1F',vb:[55,234,1074,635]},
+ // 1F's view also shows the waiting area outside the west wall; frame = the hall itself
+ H2F1:{name:'第二展示場',floor:'1F',vb:[-130,234,1259,635],frame:[55,234,1074,635]},
  H2F2:{name:'第二展示場',floor:'2F',vb:[1176,229,1107,632]},
 };
 const HALL_ORDER=['H1','H2F1','H2F2'];
@@ -370,17 +384,24 @@ const PORTALS={
  e1s:{hall:'H1',x:1551,y:1588,label:'入口（南）',in:1},
  e1n:{hall:'H1',x:1589,y:1030,label:'入口（午後〜）',in:1,pm:1},
  x1:{hall:'H1',x:1389,y:1030,label:'出口',out:1},
- // 第二展示場1Fも入口と出口が別（出口は入口のすぐ北側）
- e2:{hall:'H2F1',x:1100,y:437,label:'入口',in:1,lab:'l'},
+ // 第二展示場1Fも入口と出口が別（出口は入口のすぐ北側）。
+ // 開場直後は西側の待機列から南西の入口（e2w）へ入る。東側の入口（e2）は午後から。
+ e2:{hall:'H2F1',x:1100,y:437,label:'入口（午後〜）',in:1,pm:1,lab:'l'},
+ e2w:{hall:'H2F1',x:276,y:850,label:'入口（開場直後）',in:1,am:1,labY:-16},
  x2:{hall:'H2F1',x:1105,y:358,label:'出口',out:1},
  s1:{hall:'H2F1',x:1062,y:568,label:'エスカレーター',in:1,out:1,lab:'l'},
  s2:{hall:'H2F2',x:2168,y:440,label:'エスカレーター',in:1,out:1,lab:'l'},
 };
-// one-way links between portals; no cost = walking inside the hall.
+// waiting line before opening (outside the west wall of 第二展示場1F)
+const QUEUE={hall:'H2F1',x:-110,y:250,w:150,h:590};
+// one-way links between portals; no cost = walking inside the hall; 'am' / 'pm' = only at that time.
 // building-to-building walks weigh much more than walking an aisle
-const LINKS=[['x1','e2',2500],['x2','e1s',2800],['x2','e1n',2500,'pm'],['s1','s2',300],['s2','s1',300],['e2','s1'],['s1','x2'],['e2','x2']];
-const usable=k=>!PORTALS[k].pm||st.time==='pm';
-const SP=()=>PORTALS[usable(st.start)?st.start:'e1s'];
+const LINKS=[['x1','e2',2500,'pm'],['x1','e2w',2900,'am'],['x2','e1s',2800],['x2','e1n',2500,'pm'],['s1','s2',300],['s2','s1',300],
+  ['e2','s1'],['s1','x2'],['e2','x2'],['e2w','s1'],['e2w','x2']];
+const usable=k=>!(PORTALS[k].pm&&st.time!=='pm')&&!(PORTALS[k].am&&st.time==='pm');
+// start button 「第二 1F入口」 means whichever 1F entrance is open at that time
+const startKey=()=>st.start==='e2'?(st.time==='pm'?'e2':'e2w'):(usable(st.start)?st.start:'e1s');
+const SP=()=>PORTALS[startKey()];
 const UNIT_M=0.064; // ~1.8 m per space number
 
 const deskMap={}; DATA.desks.forEach(d=>deskMap[d.id]=d);
@@ -399,7 +420,7 @@ const PK=Object.keys(PORTALS);
 const D={},NX={};
 function computeD(){
   PK.forEach(a=>{D[a]={};NX[a]={};PK.forEach(b=>{D[a][b]=a===b?0:Infinity;NX[a][b]=b})});
-  LINKS.forEach(([a,b,c,pm])=>{if(pm&&st.time!=='pm')return; D[a][b]=c??man(PORTALS[a],PORTALS[b])});
+  LINKS.forEach(([a,b,c,when])=>{if(when&&when!==st.time)return; D[a][b]=c??man(PORTALS[a],PORTALS[b])});
   PK.forEach(k=>PK.forEach(i=>PK.forEach(j=>{if(D[i][k]+D[k][j]<D[i][j]){D[i][j]=D[i][k]+D[k][j];NX[i][j]=NX[i][k]}})));
 }
 function best(p,q){ // leave p's hall through an exit, enter q's hall through an entrance
@@ -433,7 +454,7 @@ function orderFrom(start,items){
 
 /* state */
 const KEY='m3-2026f-route-my';
-const DEFAULTS=()=>({order:[],split:true,pin:true,topFirst:true,topN:5,done:{},start:'e1s',time:'am',mode:'short',hall:'H1',zoom:{},custom:[],removed:{}});
+const DEFAULTS=()=>({order:[],split:true,pin:true,topFirst:true,topN:5,done:{},passed:{},start:'e1s',time:'am',mode:'short',hall:'H1',zoom:{},custom:[],removed:{}});
 const isObj=v=>v&&typeof v==='object'&&!Array.isArray(v);
 // Read and sanity-check the saved state; anything malformed falls back to defaults
 function load(){
@@ -446,7 +467,7 @@ function sanitize(s){
   const st=DEFAULTS();
   if(!isObj(s)) return st;
   if(Array.isArray(s.order)) st.order=s.order.filter(x=>typeof x==='string').slice(0,500);
-  ['done','removed','zoom'].forEach(k=>{if(isObj(s[k])) st[k]=Object.fromEntries(Object.entries(s[k]).filter(([,v])=>typeof v==='number'||typeof v==='boolean'))});
+  ['done','removed','zoom','passed'].forEach(k=>{if(isObj(s[k])) st[k]=Object.fromEntries(Object.entries(s[k]).filter(([,v])=>typeof v==='number'||typeof v==='boolean'))});
   if(Array.isArray(s.custom)) st.custom=s.custom.filter(c=>isObj(c)&&typeof c.id==='string'&&typeof c.area==='string'&&typeof c.num==='string').slice(0,300).map(c=>({id:c.id,area:c.area,num:c.num,name:String(c.name||c.id).slice(0,80),circle:String(c.circle||c.name||'').slice(0,80),tw:Array.isArray(c.tw)?c.tw.filter(u=>typeof u==='string'&&/^https:\/\//.test(u)).slice(0,3):[],custom:true}));
   if(s.start in PORTALS&&PORTALS[s.start].in) st.start=s.start;
   if(s.time==='pm') st.time='pm';
@@ -471,11 +492,9 @@ function syncOrder(){
   st.order=st.order.filter(id=>ids.has(id));
   STOPS.forEach(s=>{if(!st.order.includes(s.id))st.order.push(s.id)});
 }
-// 建物ごと: 第一展示場 and 第二展示場 (1F+2F together) are ranked separately
-const bldOf=s=>s.hall==='H1'?'1':'2';
-const BLD={1:'第一展示場',2:'第二展示場（1F・2F）'};
+// フロアごと: 第一展示場 / 第二展示場1F / 第二展示場2F are ranked and visited as separate blocks
 const byId=id=>STOPS.find(s=>s.id===id);
-const groupIds=s=>st.split?st.order.filter(id=>bldOf(byId(id))===bldOf(s)):st.order;
+const groupIds=s=>st.split?st.order.filter(id=>byId(id).hall===s.hall):st.order;
 const rankOf=s=>groupIds(s).indexOf(s.id);
 function tier(s){const n=groupIds(s).length,r=rankOf(s); return r<Math.ceil(n/3)?1:r<Math.ceil(n*2/3)?2:3}
 const PCOL={1:'var(--p1)',2:'var(--p2)',3:'var(--p3)'};
@@ -502,22 +521,28 @@ function plan(cur,list,anchor=true){ // list is in ranking order
   }
   return out;
 }
+let floorOrder=HALL_ORDER.slice(), passedFrom=0;
+const pathLen=(start,o)=>o.reduce((a,s,i)=>a+dist(i?o[i-1]:start,s),0);
 function compute(){
-  const todo=STOPS.filter(s=>!st.done[s.id]).sort((a,b)=>st.order.indexOf(a.id)-st.order.indexOf(b.id));
-  // 建物ごと: finish the building you start in, then cross over once
-  const first=bldOf(SP());
-  const groups=st.split?[todo.filter(s=>bldOf(s)===first),todo.filter(s=>bldOf(s)!==first)]:[todo];
-  route=[]; let cur=SP();
-  groups.forEach(g=>{if(!g.length)return; const o=st.split&&bldOf(g[0])==='2'?planHall2(cur,g):plan(cur,g); route.push(...o); cur=o[o.length-1]});
-}
-// 第二展示場: finish one floor before taking the escalator, even if that bends the ranking.
-// The floor holding the best-ranked booth goes first; 最短距離 picks whichever floor order walks less.
-function planHall2(cur,g){
-  const f1=g.filter(s=>s.hall==='H2F1'), f2=g.filter(s=>s.hall==='H2F2');
-  if(!f1.length||!f2.length) return plan(cur,g);
-  // the second floor continues the shortest path from wherever the first floor ended
-  const run=floors=>{let c=cur,out=[];floors.forEach((f,i)=>{const o=plan(c,f,i===0);out.push(...o);c=o[o.length-1]});return out};
-  return g[0].hall==='H2F1'?run([f1,f2]):run([f2,f1]);
+  const byRank=(a,b)=>st.order.indexOf(a.id)-st.order.indexOf(b.id);
+  const todo=STOPS.filter(s=>!st.done[s.id]&&!st.passed[s.id]).sort(byRank);
+  // パス: passed booths wait at the end of the route, in the order they were passed
+  const passed=STOPS.filter(s=>!st.done[s.id]&&st.passed[s.id]).sort((a,b)=>st.passed[a.id]-st.passed[b.id]);
+  const start=SP();
+  if(!st.split){route=plan(start,todo); floorOrder=HALL_ORDER.slice()}
+  else{
+    // フロアごと: finish one floor before moving on. The starting floor goes first; the other two go in
+    // whichever order walks less (e.g. start at 第一 → 第二1F → 第二2F, so you never double back).
+    const rest=HALL_ORDER.filter(h=>h!==start.hall);
+    let best=null;
+    [[start.hall,...rest],[start.hall,...rest.slice().reverse()]].forEach(order=>{
+      let cur=start; const out=[];
+      order.forEach(h=>{const g=todo.filter(s=>s.hall===h); if(!g.length)return; const o=plan(cur,g); out.push(...o); cur=o[o.length-1]});
+      const len=pathLen(start,out); if(!best||len<best.len) best={order,out,len};
+    });
+    route=best.out; floorOrder=best.order;
+  }
+  passedFrom=route.length; route=route.concat(passed);
 }
 
 /* map */
@@ -526,9 +551,16 @@ const el=(t,a={},txt)=>{const e=document.createElementNS(NS,t);for(const k in a)
 const svgs={};
 function buildMaps(){
   HALL_ORDER.forEach(h=>{
-    const [x,y,w,hh]=HALLS[h].vb;
+    const [x,y,w,hh]=HALLS[h].vb, [fx,fy,fw,fh]=HALLS[h].frame||HALLS[h].vb;
     const s=el('svg',{viewBox:`${x} ${y} ${w} ${hh}`,role:'img','aria-label':HALLS[h].name+' '+HALLS[h].floor});
-    s.appendChild(el('rect',{class:'m-frame',x:x+6,y:y+6,width:w-12,height:hh-12,rx:6}));
+    s.appendChild(el('rect',{class:'m-frame',x:fx+6,y:fy+6,width:fw-12,height:fh-12,rx:6}));
+    if(QUEUE.hall===h){ // 待機列: shown before opening only (opacity follows the time of day)
+      const q=el('g',{'data-am':1});
+      q.appendChild(el('rect',{class:'m-queue',x:QUEUE.x,y:QUEUE.y,width:QUEUE.w,height:QUEUE.h,rx:8}));
+      q.appendChild(el('text',{class:'m-qt',x:QUEUE.x+QUEUE.w/2,y:QUEUE.y+QUEUE.h/2,'text-anchor':'middle','dominant-baseline':'middle',transform:`rotate(-90 ${QUEUE.x+QUEUE.w/2} ${QUEUE.y+QUEUE.h/2})`},'待機列（開場前）'));
+      q.appendChild(el('path',{class:'m-qpath',d:`M ${QUEUE.x+QUEUE.w/2} ${QUEUE.y+QUEUE.h} L ${QUEUE.x+QUEUE.w/2} 850 L ${PORTALS.e2w.x-14} 850`}));
+      s.appendChild(q);
+    }
     const g=el('g');
     DATA.desks.forEach(d=>{const b=d.id.split('-')[0]; if(hallOf(b)!==h)return;
       g.appendChild(el('rect',{class:'m-desk',x:d.x,y:d.y,width:d.width,height:d.height}));
@@ -537,10 +569,10 @@ function buildMaps(){
     s.appendChild(g);
     DATA.blockLabels.forEach(l=>{if(hallOf(l.text)!==h)return; s.appendChild(el('text',{class:'m-bl',x:l.x,y:l.y,'text-anchor':'middle','dominant-baseline':'middle'},l.text))});
     Object.values(PORTALS).forEach(p=>{if(p.hall!==h)return;
-      const g=el('g',p.pm?{'data-pm':1}:{});
+      const g=el('g',p.pm?{'data-pm':1}:p.am?{'data-am':1}:{});
       g.appendChild(el('rect',{class:'m-portal'+(p.out&&!p.in?' m-exit':''),x:p.x-9,y:p.y-9,width:18,height:18,rx:4}));
       const left=p.lab==='l'||(p.out&&!p.in);
-      g.appendChild(el('text',{class:'m-pt'+(p.out&&!p.in?' m-exit':''),x:p.x+(left?-14:14),y:p.y+(p.y>1500?-14:28),'text-anchor':left?'end':'start'},p.label));
+      g.appendChild(el('text',{class:'m-pt'+(p.out&&!p.in?' m-exit':''),x:p.x+(left?-14:14),y:p.y+(p.labY??(p.y>1500?-14:28)),'text-anchor':left?'end':'start'},p.label));
       s.appendChild(g);
     });
     s.appendChild(el('g',{class:'layer'}));
@@ -550,7 +582,8 @@ function buildMaps(){
 function drawRoute(){
   HALL_ORDER.forEach(h=>{const L=svgs[h].querySelector('.layer'); L.replaceChildren();});
   // start marker
-  HALL_ORDER.forEach(h=>svgs[h].querySelectorAll('[data-pm]').forEach(e=>e.style.opacity=st.time==='pm'?1:.3));
+  HALL_ORDER.forEach(h=>{svgs[h].querySelectorAll('[data-pm]').forEach(e=>e.style.opacity=st.time==='pm'?1:.3);
+    svgs[h].querySelectorAll('[data-am]').forEach(e=>e.style.opacity=st.time==='pm'?.3:1)});
   const sp=SP(); const SL=svgs[sp.hall].querySelector('.layer');
   SL.appendChild(el('circle',{class:'m-start',cx:sp.x,cy:sp.y,r:13}));
   SL.appendChild(el('text',{class:'m-tn',x:sp.x,y:sp.y+5,'text-anchor':'middle'},'S'));
@@ -558,17 +591,46 @@ function drawRoute(){
   let prev=sp;
   route.forEach(s=>{legs(prev,s).forEach(l=>{const L=svgs[l.hall].querySelector('.layer');
     L.appendChild(el('path',{class:'m-route',d:'M'+l.pts.map(p=>p.x+' '+p.y).join(' L ')}))}); prev=s;});
-  // markers
-  STOPS.forEach(s=>{
-    const L=svgs[s.hall].querySelector('.layer'); const i=route.indexOf(s); const done=!!st.done[s.id];
-    const d=s.desk;
-    L.appendChild(el('rect',{class:'m-hl',x:d.x-2,y:d.y-2,width:d.width+4,height:d.height+4,rx:3,style:`stroke:${done?'var(--ok)':PCOL[tier(s)]}`}));
+  // markers: booths sharing a desk or sitting next to each other would cover one another, so the
+  // earliest stop keeps the full-size number on the desk and later ones shrink to a free spot beside it
+  STOPS.forEach(s=>{const d=s.desk; svgs[s.hall].querySelector('.layer').appendChild(el('rect',{class:'m-hl',x:d.x-2,y:d.y-2,width:d.width+4,height:d.height+4,rx:3,style:`stroke:${st.done[s.id]?'var(--ok)':PCOL[tier(s)]}`}))});
+  const placed={}, ops=[], R=15, r=10;
+  const free=(h,x,y,rad)=>(placed[h]||[]).every(p=>Math.hypot(p.x-x,p.y-y)>=p.r+rad+1);
+  const ordered=[...route,...STOPS.filter(s=>st.done[s.id])];
+  ordered.forEach(s=>{
+    const i=route.indexOf(s), done=!!st.done[s.id], fill=done?'var(--ok)':i>=passedFrom?'var(--p3)':PCOL[tier(s)];
+    let pos={x:s.x,y:s.y,rad:R,small:false};
+    if(done||!free(s.hall,s.x,s.y,R)){
+      pos={x:s.x,y:s.y,rad:r,small:true};
+      for(const [dx,dy] of [[24,0],[-24,0],[0,-24],[0,24],[20,-20],[-20,-20],[20,20],[-20,20],[44,0],[-44,0]]){
+        if(free(s.hall,s.x+dx,s.y+dy,r)){pos={x:s.x+dx,y:s.y+dy,rad:r,small:true};break}
+      }
+    }
+    (placed[s.hall]=placed[s.hall]||[]).push({x:pos.x,y:pos.y,r:pos.rad});
+    ops.push({s,i,done,fill,pos});
+  });
+  // draw later stops first so the earlier (more important) numbers end up on top
+  ops.slice().reverse().forEach(({s,i,done,fill,pos})=>{
+    const L=svgs[s.hall].querySelector('.layer');
     const g=el('g',{style:'cursor:pointer'}); g.addEventListener('click',()=>focusStop(s));
-    g.appendChild(el('circle',{class:'m-tgt',cx:s.x,cy:s.y,r:15,style:`fill:${done?'var(--ok)':PCOL[tier(s)]}`}));
-    g.appendChild(el('text',{class:'m-tn',x:s.x,y:s.y+5,'text-anchor':'middle'},done?'✓':String(i+1)));
+    if(pos.small&&(pos.x!==s.x||pos.y!==s.y)) g.appendChild(el('line',{class:'m-lead',x1:s.x,y1:s.y,x2:pos.x,y2:pos.y}));
+    g.appendChild(el('circle',{class:'m-tgt',cx:pos.x,cy:pos.y,r:pos.rad,style:`fill:${fill}`}));
+    g.appendChild(el('text',{class:pos.small?'m-tn m-tn-s':'m-tn',x:pos.x,y:pos.y+(pos.small?4:5),'text-anchor':'middle'},done?'✓':String(i+1)));
     g.appendChild(el('title',{},`${s.name} ${s.area}-${s.num}（優先${rankOf(s)+1}位）`));
     L.appendChild(g);
   });
+  // 次はここ: a pulsing ring and a callout on the next booth to visit
+  const nx=route[0];
+  if(nx){
+    const L=svgs[nx.hall].querySelector('.layer'), w=nx.name.length*16+64;
+    const g=el('g',{class:'m-next',style:'pointer-events:none'});
+    g.appendChild(el('circle',{class:'m-pulse',cx:nx.x,cy:nx.y,r:22}));
+    const bx=nx.x-w/2, by=nx.y-62;
+    g.appendChild(el('rect',{class:'m-call',x:bx,y:by,width:w,height:30,rx:8}));
+    g.appendChild(el('path',{class:'m-call',d:`M ${nx.x-7} ${by+29} L ${nx.x} ${by+38} L ${nx.x+7} ${by+29} Z`}));
+    g.appendChild(el('text',{class:'m-callt',x:nx.x,y:by+20,'text-anchor':'middle'},'次 ▸ '+nx.name));
+    L.appendChild(g);
+  }
 }
 
 const scroller=document.getElementById('mapscroll');
@@ -618,7 +680,7 @@ function renderTabs(){
   });
 }
 function segs(){
-  if(!usable(st.start)) st.start='e1s';
+  if(st.start==='e1n'&&st.time!=='pm') st.start='e1s';
   const topRow=document.getElementById('topRow'), tf=document.getElementById('topFirst');
   topRow.hidden=st.mode!=='short'; topRow.classList.toggle('off',!st.topFirst);
   tf.checked=st.topFirst; document.getElementById('topN').textContent=st.topN;
@@ -638,7 +700,7 @@ function segs(){
   more.ontoggle=()=>{const c=more.querySelector('.ms-cta'); if(c) c.textContent=more.open?'閉じる':'変更'};
   [['startSeg','start'],['modeSeg','mode'],['timeSeg','time']].forEach(([id,k])=>{
     document.querySelectorAll('#'+id+' button').forEach(b=>{b.setAttribute('aria-pressed',st[k]===b.dataset.v);
-      b.disabled=k==='start'&&!usable(b.dataset.v);
+      b.disabled=k==='start'&&b.dataset.v==='e1n'&&st.time!=='pm';
       b.onclick=()=>{st[k]=b.dataset.v;save();refresh()}});
   });
 }
@@ -652,17 +714,36 @@ function stopItem(s,i){
     <div class="top"><span class="name" tabindex="0" role="button">${esc(s.name)}</span><span class="booth">${esc(s.area+'-'+s.num)}</span></div>
     <div class="meta"><span>${hallName(s.hall)}</span><span>サークル「${esc(s.circle)}」</span>${tw}</div>
     <div class="ctl"><span class="badge">優先 ${rankOf(s)+1}位</span>
-    <label class="chk"><input type="checkbox" id="done-${esc(s.id)}" ${st.done[s.id]?'checked':''}>訪問済み</label></div>
+    <label class="chk"><input type="checkbox" id="done-${esc(s.id)}" ${st.done[s.id]?'checked':''}>訪問済み</label>
+    ${st.done[s.id]?'':`<button class="passbtn" aria-pressed="${!!st.passed[s.id]}">${st.passed[s.id]?'パスを取り消す':'パス'}</button>`}</div>
   </div>`;
+  if(st.passed[s.id]&&!st.done[s.id]) li.classList.add('passed');
   const nm=li.querySelector('.name'); nm.onclick=()=>focusStop(s); nm.onkeydown=e=>{if(e.key==='Enter')focusStop(s)};
-  li.querySelector('input').onchange=e=>{if(e.target.checked)st.done[s.id]=1;else delete st.done[s.id];save();refresh()};
+  li.querySelector('input').onchange=e=>{
+    if(e.target.checked){st.done[s.id]=1; delete st.passed[s.id]} else delete st.done[s.id];
+    save(); refresh(); if(e.target.checked) showNext('訪問済みにしました');
+  };
+  const pb=li.querySelector('.passbtn');
+  if(pb) pb.onclick=()=>{
+    const was=!!st.passed[s.id];
+    if(was) delete st.passed[s.id]; else st.passed[s.id]=Date.now();
+    save(); refresh(); if(!was) showNext(`${s.name} をパスしました（リストの最後に回しました）`); else toast(`${s.name} のパスを取り消しました`);
+  };
   return li;
+}
+// after 訪問済み / パス: bring the next booth into view on the map and say where it is
+function showNext(prefix){
+  const nx=route[0];
+  if(!nx){toast(prefix+'。すべて回り終わりました！');return}
+  focusStop(nx);
+  toast(`${prefix}。次は ${nx.name}（${nx.area}-${nx.num}・${hallName(nx.hall)}）`);
 }
 function renderList(){
   const ol=document.getElementById('route'); ol.replaceChildren();
   let prev=SP(), total=0, moves=0;
   route.forEach((s,i)=>{
     total+=dist(prev,s);
+    if(i===passedFrom){const m=document.createElement('li'); m.className='move passsep'; m.textContent='↓ パスしたブース（あとで回る）'; ol.appendChild(m)}
     if(prev.hall!==s.hall){moves++; const m=document.createElement('li'); m.className='move';
       m.textContent=`↓ ${hallName(s.hall)}へ移動`+(HALLS[prev.hall].name!==HALLS[s.hall].name?'（建物を移動）':'（エスカレーター）'); ol.appendChild(m);}
     ol.appendChild(stopItem(s,i)); prev=s;
@@ -679,7 +760,7 @@ const boothId=(a,n)=>'c:'+a+'-'+n;
 const inList=(a,n)=>STOPS.some(s=>s.area===a&&s.num===n);
 function removeStop(s){
   if(s.custom) st.custom=st.custom.filter(c=>c.id!==s.id); else st.removed[s.id]=1;
-  st.order=st.order.filter(id=>id!==s.id); delete st.done[s.id]; save(); refresh();
+  st.order=st.order.filter(id=>id!==s.id); delete st.done[s.id]; delete st.passed[s.id]; save(); refresh();
 }
 function addCircle(c){
   const [name,,area,num,tw]=c;
@@ -728,7 +809,7 @@ function renderRemoved(){
 }
 /* ranking list with drag (pointer) and keyboard reordering */
 let toastT=0;
-function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600)}
+function toast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,3600)}
 function reordered(){
   toast(route.length?`巡回ルートを更新しました（最初は ${route[0].name}）`:'並べ替えました');
 }
@@ -743,9 +824,8 @@ function renderRank(focusId){
   document.getElementById('openRankN').textContent=STOPS.length+'件';
   document.querySelectorAll('#splitSeg button').forEach(b=>{b.setAttribute('aria-pressed',String(st.split)===(b.dataset.v==='1'?'true':'false'));
     b.onclick=()=>{st.split=b.dataset.v==='1';save();refresh()}});
-  document.getElementById('splitNote').textContent=(st.split?'第一展示場と第二展示場（1F・2F）を別々に並べます。スタート地点の建物を回り終えてから、もう一方へ1回だけ移動します。第二展示場は1階と2階を行き来しないよう、1位のブースがある階を先に回り切ってからもう一方の階へ移ります（そのため順位どおりにならないことがあります）。':'すべてのブースを1つのリストで並べます。建物の行き来が増えることがあります。')+' ⠿ をドラッグして並べ替え、上ほど優先です（⠿ にフォーカスして ↑↓ キーでも動かせます）。';
-  const groups=st.split?['1','2'].map(b=>({title:BLD[b],ids:st.order.filter(id=>bldOf(byId(id))===b)})):[{title:'',ids:st.order}];
-  if(st.split&&bldOf(SP())==='2') groups.reverse();
+  document.getElementById('splitNote').textContent=(st.split?'第一展示場・第二展示場1F・第二展示場2Fを別々に並べます。1つのフロアを回り終えてから次のフロアへ移るので、行ったり来たりしません。フロアの順番は、スタート地点のフロアから歩く距離が短くなる順に自動で決まります（下のリストもその順に並びます）。':'すべてのブースを1つのリストで並べます。フロアや建物の行き来が増えることがあります。')+' ⠿ をドラッグして並べ替え、上ほど優先です（⠿ にフォーカスして ↑↓ キーでも動かせます）。';
+  const groups=st.split?floorOrder.map(h=>({title:hallName(h),ids:st.order.filter(id=>byId(id).hall===h)})):[{title:'',ids:st.order}];
   groups.forEach(g=>{
     if(st.split){const h=document.createElement('h3'); h.className='rank-h'; h.innerHTML=`${g.title}<span>${g.ids.length}件</span>`; box.appendChild(h)}
     const ol=document.createElement('ol'); ol.className='rank'; box.appendChild(ol);
@@ -788,7 +868,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape'){closeRank();closeShare()}});
 document.querySelector('.rank-link').addEventListener('click',e=>{e.preventDefault();openRank()});
 addEventListener('hashchange',()=>{if(location.hash==='#rank')openRank()});
 /* sharing between devices: a snapshot of the list travels as a compact code (in a URL / QR code where the page has a real address) */
-const SHARE_KEYS=['order','custom','removed','done','split','topFirst','topN','mode','start','time'];
+const SHARE_KEYS=['order','custom','removed','done','passed','split','topFirst','topN','mode','start','time'];
 const MODE_NAME={short:'最短距離',flex:'近くを寄り道',strict:'順位どおり'};
 const b64u={
   enc:buf=>{let s='';buf.forEach(b=>s+=String.fromCharCode(b));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')},
@@ -898,7 +978,7 @@ function startDrag(e,li,h){
   addEventListener('pointermove',move); addEventListener('pointerup',end); addEventListener('pointercancel',end);
 }
 function refresh(focusId){rebuildStops();syncOrder();segs();computeD();compute();drawRoute();renderList();renderRank(focusId);renderTabs();renderRemoved();document.getElementById('count').textContent=STOPS.length}
-document.getElementById('reset').onclick=()=>{st.done={};save();refresh()};
+document.getElementById('reset').onclick=()=>{st.done={};st.passed={};save();refresh()};
 
 /* light / dark toggle: remembered per browser; without a choice the OS setting applies */
 const THEME_KEY='m3-2026f-route-theme', root=document.documentElement, themeBtn=document.getElementById('themeBtn');

@@ -614,13 +614,13 @@ function drawRoute(){
   // 次はここ: a pulsing ring and a callout on the next booth to visit
   const nx=route[0];
   if(nx){
-    const L=svgs[nx.hall].querySelector('.layer'), w=nx.name.length*16+64;
+    const booth=nx.area+'-'+nx.num, L=svgs[nx.hall].querySelector('.layer'), w=nx.name.length*16+booth.length*11+84;
     const g=el('g',{class:'m-next',style:'pointer-events:none'});
     g.appendChild(el('circle',{class:'m-pulse',cx:nx.x,cy:nx.y,r:22}));
     const bx=nx.x-w/2, by=nx.y-62;
     g.appendChild(el('rect',{class:'m-call',x:bx,y:by,width:w,height:30,rx:8}));
     g.appendChild(el('path',{class:'m-call',d:`M ${nx.x-7} ${by+29} L ${nx.x} ${by+38} L ${nx.x+7} ${by+29} Z`}));
-    g.appendChild(el('text',{class:'m-callt',x:nx.x,y:by+20,'text-anchor':'middle'},'次 ▸ '+nx.name));
+    g.appendChild(el('text',{class:'m-callt',x:nx.x,y:by+20,'text-anchor':'middle'},'次 ▸ '+nx.name+'（'+booth+'）'));
     L.appendChild(g);
   }
 }

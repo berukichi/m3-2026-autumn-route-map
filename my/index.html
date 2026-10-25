@@ -482,9 +482,10 @@ function sanitize(s){
   return st;
 }
 let st=load();
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+let syncing=false; // true while adopting another tab's data, so we don't write it straight back
+const save=()=>{if(syncing)return; try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
 // another tab of this page saved newer data: adopt it instead of overwriting it later
-addEventListener('storage',e=>{if(e.key===KEY){st=load();refresh();showHall(st.hall);applyPin()}});
+addEventListener('storage',e=>{if(e.key!==KEY)return; syncing=true; try{st=load();refresh();showHall(st.hall);applyPin()}finally{syncing=false}});
 
 /* ranking */
 function syncOrder(){
